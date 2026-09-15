@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>时间之锚</title>
+  <meta name="theme-color" content="#06080c" />
+  <meta name="description" content="智子看不见的河边。重建文明，在2300年到来前夺回地球。" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="时间之锚" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/icon-180.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="intro" class="intro">
+    <canvas id="intro-stars"></canvas>
+    <div class="intro-mist"></div>
+    <div class="intro-panel">
+      <p class="intro-kicker">TIME ANCHOR</p>
+      <div id="intro-text" class="intro-text"></div>
+      <div class="intro-actions">
+        <button type="button" id="intro-next" class="btn btn-anchor">继续</button>
+        <button type="button" id="intro-skip" class="btn btn-ghost">跳过开场</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="app" class="app" hidden>
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <div>
+          <h1>时间之锚</h1>
+          <p class="brand-sub">河岸纪事 · 智子盲区</p>
+        </div>
+      </div>
+      <div class="clocks">
+        <div class="clock">
+          <span class="clock-label">本地</span>
+          <strong id="local-time">第 1 年 · 潮汐季 · 第 1 日</strong>
+        </div>
+        <div class="clock">
+          <span class="clock-label">地球</span>
+          <strong id="earth-time">2300.00 · 干预准备 0%</strong>
+        </div>
+        <div class="clock">
+          <span class="clock-label">锚点</span>
+          <strong id="anchor-charge">充能 0%</strong>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button type="button" id="btn-save" class="btn btn-ghost">保存</button>
+        <button type="button" id="btn-settings" class="btn btn-ghost">设置</button>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="panel resources-panel">
+        <div class="panel-head">
+          <h2>物资</h2>
+          <span id="pop-summary" class="muted">河民 0 / 0</span>
+        </div>
+        <div id="resource-list" class="resource-list"></div>
+        <div class="meters">
+          <div class="meter">
+            <div class="meter-label"><span>安定</span><span id="happiness-val">100%</span></div>
+            <div class="meter-bar"><i id="happiness-bar"></i></div>
+          </div>
+          <div class="meter">
+            <div class="meter-label"><span>隐蔽</span><span id="conceal-val">100%</span></div>
+            <div class="meter-bar meter-bar-warn"><i id="conceal-bar"></i></div>
+          </div>
+        </div>
+      </aside>
+
+      <main class="panel main-panel">
+        <nav class="tabs" id="tabs"></nav>
+        <section id="tab-content" class="tab-content"></section>
+        <aside class="log-panel">
+          <div class="panel-head">
+            <h2>河岸记录</h2>
+            <button type="button" id="btn-clear-log" class="btn btn-tiny">清空</button>
+          </div>
+          <div id="log-list" class="log-list"></div>
+        </aside>
+      </main>
+    </div>
+  </div>
+
+  <div id="modal" class="modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true">
+      <h2 id="modal-title">设置</h2>
+      <div id="modal-body"></div>
+      <div class="modal-actions">
+        <button type="button" id="modal-close" class="btn btn-anchor">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="js/util.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/pwa.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
