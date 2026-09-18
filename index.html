@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/style.css?v=2026-09-18-3" />
 </head>
 <body>
   <div id="intro" class="intro">
@@ -64,16 +64,16 @@
       <aside class="panel resources-panel">
         <div class="panel-head">
           <h2>物资</h2>
-          <span id="pop-summary" class="muted">河民 0 / 0</span>
+          <span id="pop-summary" class="muted">居民 0 / 0</span>
         </div>
         <div id="resource-list" class="resource-list"></div>
         <div class="meters">
           <div class="meter">
-            <div class="meter-label"><span>安定</span><span id="happiness-val">100%</span></div>
+            <div class="meter-label"><span class="meter-name" id="happiness-label">安定</span><span id="happiness-val">100%</span></div>
             <div class="meter-bar"><i id="happiness-bar"></i></div>
           </div>
           <div class="meter">
-            <div class="meter-label"><span>隐蔽</span><span id="conceal-val">100%</span></div>
+            <div class="meter-label"><span class="meter-name" id="conceal-label">隐蔽</span><span id="conceal-val">100%</span></div>
             <div class="meter-bar meter-bar-warn"><i id="conceal-bar"></i></div>
           </div>
         </div>
@@ -105,11 +105,12 @@
 
   <div id="toast" class="toast" hidden></div>
 
-  <script src="js/util.js"></script>
-  <script src="js/data.js"></script>
-  <script src="js/game.js"></script>
-  <script src="js/ui.js"></script>
-  <script src="js/pwa.js"></script>
-  <script src="js/main.js"></script>
+  <script src="js/util.js?v=2026-09-18-3"></script>
+  <script src="js/icons.js?v=2026-09-18-3"></script>
+  <script src="js/data.js?v=2026-09-18-3"></script>
+  <script src="js/game.js?v=2026-09-18-3"></script>
+  <script src="js/ui.js?v=2026-09-18-3"></script>
+  <script src="js/pwa.js?v=2026-09-18-3"></script>
+  <script src="js/main.js?v=2026-09-18-3"></script>
 </body>
 </html>

@@ -51,7 +51,8 @@ TA.costText = function costText(cost, amounts) {
     .map(([k, v]) => {
       const name = TA.DATA.resources[k]?.name || TA.DATA.specialNames[k] || k;
       const lack = (amounts[k] || 0) < v - 1e-9;
-      return `<span class="${lack ? "lack" : ""}">${name} ${TA.fmt(v)}</span>`;
+      const ico = TA.icon ? TA.icon(k, "ico-cost") : "";
+      return `<span class="${lack ? "lack" : ""}">${ico}${name} ${TA.fmt(v)}</span>`;
     })
     .join("<br>");
 };

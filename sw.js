@@ -1,4 +1,4 @@
-const VERSION = "2026-09-15-1";
+const VERSION = "2026-09-18-3";
 const CACHE = "time-anchor-" + VERSION;
 
 const PRECACHE = [
@@ -6,6 +6,7 @@ const PRECACHE = [
   "./index.html",
   "./css/style.css",
   "./js/util.js",
+  "./js/icons.js",
   "./js/data.js",
   "./js/game.js",
   "./js/ui.js",

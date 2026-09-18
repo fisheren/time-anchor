@@ -49,6 +49,6 @@ TA.PWA = {
       this.deferred = null;
       return;
     }
-    TA.UI.toast("用浏览器菜单里的「添加到主屏幕 / 安装应用」即可。");
+    TA.UI.toast("使用浏览器菜单里的「添加到主屏幕 / 安装应用」。");
   },
 };

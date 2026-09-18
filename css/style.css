@@ -229,22 +229,28 @@ button, input, textarea, select { font-family: inherit; }
 }
 .res-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.2rem 0.5rem;
+  grid-template-columns: 1.2rem minmax(0, 1fr) auto;
+  grid-template-areas:
+    "ico name amt"
+    "ico rate rate";
+  gap: 0.12rem 0.45rem;
   padding: 0.32rem 0.35rem;
+  align-items: center;
   border-bottom: 1px solid rgba(122, 168, 168, 0.07);
 }
 .res-row:hover { background: rgba(94, 234, 212, 0.04); }
-.res-name { font-size: 0.82rem; }
+.res-row .ico { grid-area: ico; color: var(--amber); justify-self: center; }
+.res-name { font-size: 0.82rem; grid-area: name; }
 .res-amt {
   font-family: var(--font-mono);
   font-size: 0.78rem;
   text-align: right;
   white-space: nowrap;
+  grid-area: amt;
 }
 .res-cap { color: var(--muted); font-size: 0.7rem; }
 .res-rate {
-  grid-column: 1 / -1;
+  grid-area: rate;
   font-family: var(--font-mono);
   font-size: 0.68rem;
   color: var(--ok);
@@ -260,6 +266,11 @@ button, input, textarea, select { font-family: inherit; }
   font-size: 0.72rem;
   color: var(--muted);
   margin-bottom: 0.2rem;
+}
+.meter-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
 }
 .meter-bar {
   height: 5px;
@@ -292,6 +303,9 @@ button, input, textarea, select { font-family: inherit; }
   letter-spacing: 0.08em;
   border-bottom: 2px solid transparent;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 .tab:hover { color: var(--text); }
 .tab.active {
@@ -321,7 +335,7 @@ button, input, textarea, select { font-family: inherit; }
 
 .gather-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
   gap: 0.55rem;
   margin-bottom: 1.1rem;
 }
@@ -329,7 +343,11 @@ button, input, textarea, select { font-family: inherit; }
   text-align: left;
   padding: 0.7rem 0.75rem;
   background: #10181e;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
 }
+.gather .g-copy { min-width: 0; }
 .gather .g-name { display: block; color: var(--text-strong); }
 .gather .g-gain {
   display: block;
@@ -343,7 +361,7 @@ button, input, textarea, select { font-family: inherit; }
 .item-row {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.45rem 0.9rem;
   max-width: 46rem;
   padding: 0.55rem 0.65rem;
@@ -355,6 +373,7 @@ button, input, textarea, select { font-family: inherit; }
   font-size: 0.9rem;
   color: var(--text-strong);
 }
+.item-body { flex: 1 1 14rem; min-width: 0; }
 .item-count {
   color: var(--anchor);
   font-family: var(--font-mono);
@@ -367,7 +386,7 @@ button, input, textarea, select { font-family: inherit; }
   color: var(--muted);
   line-height: 1.5;
 }
-.item-row > div:first-child { flex: 1 1 16rem; }
+.item-row > .item-body { flex: 1 1 14rem; }
 .item-cost {
   font-family: var(--font-mono);
   font-size: 0.72rem;
@@ -380,7 +399,34 @@ button, input, textarea, select { font-family: inherit; }
   display: flex;
   gap: 0.3rem;
   flex: 0 0 auto;
+  align-self: center;
 }
+
+.ico {
+  width: 1.35rem;
+  height: 1.35rem;
+  min-width: 1.35rem;
+  min-height: 1.35rem;
+  max-width: 1.85rem;
+  max-height: 1.85rem;
+  flex: 0 0 auto;
+  display: block;
+  color: var(--anchor);
+  overflow: hidden;
+}
+.ico-sm { width: 0.95rem; height: 0.95rem; min-width: 0.95rem; min-height: 0.95rem; max-width: 0.95rem; max-height: 0.95rem; }
+.ico-lg { width: 1.85rem; height: 1.85rem; min-width: 1.85rem; min-height: 1.85rem; max-width: 1.85rem; max-height: 1.85rem; margin-top: 0.12rem; }
+.ico-gather { width: 1.75rem; height: 1.75rem; min-width: 1.75rem; min-height: 1.75rem; max-width: 1.75rem; max-height: 1.75rem; }
+.ico-tab { width: 0.95rem; height: 0.95rem; min-width: 0.95rem; min-height: 0.95rem; max-width: 0.95rem; max-height: 0.95rem; color: currentColor; }
+.ico-cost {
+  width: 0.82rem;
+  height: 0.82rem;
+  display: inline-block;
+  vertical-align: -0.15rem;
+  margin-right: 0.16rem;
+  color: inherit;
+}
+.item-cost span { white-space: nowrap; }
 
 .jobs {
   display: flex;
@@ -389,7 +435,7 @@ button, input, textarea, select { font-family: inherit; }
 }
 .job-row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: auto 1fr auto;
   gap: 0.5rem;
   align-items: center;
   padding: 0.5rem 0.6rem;
@@ -400,6 +446,82 @@ button, input, textarea, select { font-family: inherit; }
   font-family: var(--font-mono);
   min-width: 1.6rem;
   text-align: center;
+}
+
+.draw-panel {
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+  padding: 0.7rem 0.75rem;
+  margin-bottom: 0.9rem;
+  border: 1px solid var(--line-strong);
+  background: rgba(12, 22, 28, 0.8);
+  max-width: 46rem;
+}
+.draw-body { flex: 1; min-width: 0; }
+.stake-row { display: flex; gap: 0.3rem; margin: 0.45rem 0 0.5rem; flex-wrap: wrap; }
+.stake-row .btn.active {
+  border-color: var(--anchor);
+  color: var(--anchor);
+  background: rgba(18, 64, 60, 0.95);
+}
+.odds-row { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0.5rem; }
+.rarity-tag {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  padding: 0.08rem 0.4rem;
+  border: 1px solid currentColor;
+  margin-right: 0.35rem;
+}
+.rarity-common { color: #e6e6e6; }
+.rarity-expert { color: #5aa6e8; }
+.rarity-epic { color: #b07cff; }
+.rarity-legendary { color: #efc94c; }
+.rarity-mythic { color: #e85b4a; }
+.elite-list { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.9rem; }
+.elite-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.5rem 0.7rem;
+  max-width: 46rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  background: rgba(12, 18, 24, 0.65);
+}
+.elite-card.rarity-common { border-left-color: #e6e6e6; }
+.elite-card.rarity-expert { border-left-color: #5aa6e8; }
+.elite-card.rarity-epic { border-left-color: #b07cff; }
+.elite-card.rarity-legendary { border-left-color: #efc94c; }
+.elite-card.rarity-mythic { border-left-color: #e85b4a; }
+.elite-card.fresh { box-shadow: 0 0 14px var(--anchor-glow); }
+.elite-job {
+  background: #10181e;
+  color: var(--text);
+  border: 1px solid rgba(122, 168, 168, 0.32);
+  padding: 0.28rem 0.4rem;
+  min-width: 6.5rem;
+}
+.elite-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  align-self: center;
+}
+.draw-result {
+  margin-top: 0.7rem;
+  width: 100%;
+}
+.draw-result-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  width: 100%;
+}
+.draw-result .item-cost {
+  width: 100%;
 }
 .idle-banner {
   padding: 0.55rem 0.7rem;
@@ -432,6 +554,9 @@ button, input, textarea, select { font-family: inherit; }
   margin: 0;
   font-size: 0.92rem;
   font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 .tech-era {
   font-family: var(--font-mono);

@@ -22,6 +22,10 @@ TA.defaultState = function defaultState() {
     metaphysics: {},
     jobs,
     pop: 0,
+    elites: [],
+    pendingElite: null,
+    drawStake: 1,
+    lastDrawId: "",
     happiness: 72,
     concealment: 100,
     charge: 0,
@@ -86,6 +90,10 @@ TA.Game = class Game {
         if (typeof v === "number") f[k] = (f[k] || 0) + v * n;
       }
     }
+    for (const el of this.s.elites || []) {
+      if (!el.passive) continue;
+      add(TA.DATA.elitePassives[el.passive]?.flags);
+    }
     return f;
   }
 
@@ -99,6 +107,22 @@ TA.Game = class Game {
       h += (TA.DATA.buildings[id]?.housing || 0) * n;
     }
     return h;
+  }
+
+  eliteHousing() {
+    let h = 0;
+    for (const [id, n] of Object.entries(this.s.buildings)) {
+      h += (TA.DATA.buildings[id]?.housingElite || 0) * n;
+    }
+    return h;
+  }
+
+  eliteEat() {
+    let n = 0;
+    for (const el of this.s.elites || []) {
+      n += TA.DATA.rarities[el.rarity]?.eat || 1;
+    }
+    return n;
   }
 
   idlePop() {
@@ -128,9 +152,17 @@ TA.Game = class Game {
     return caps;
   }
 
+  resourceAtCap(id, caps) {
+    const cap = (caps || this.caps())[id];
+    if (cap == null || !isFinite(cap)) return false;
+    const have = this.s.resources[id] || 0;
+    return have + 0.001 >= cap;
+  }
+
   production() {
     const season = this.season();
     const fl = this.flags();
+    const caps = this.caps();
     let global = (1 + (fl.globalProd || 0)) * this.emberMult();
     if (this.s.concealment <= 0.5) global *= 0.45;
     const prod = {};
@@ -156,7 +188,9 @@ TA.Game = class Game {
       const b = TA.DATA.buildings[id];
       if (!b) continue;
       let run = n;
-      if (b.consumption) {
+      const outs = Object.entries(b.production || {}).filter(([, v]) => v > 0).map(([k]) => k);
+      if (outs.length && outs.every((k) => this.resourceAtCap(k, caps))) run = 0;
+      if (run && b.consumption) {
         for (const [k, v] of Object.entries(b.consumption)) {
           const need = v * n;
           const have = this.s.resources[k] || 0;
@@ -185,8 +219,20 @@ TA.Game = class Game {
         add(prod, k, seasonize(k, amt));
       }
     }
+    for (const el of this.s.elites || []) {
+      if (!el.job) continue;
+      const job = TA.DATA.jobs[el.job];
+      if (!job) continue;
+      const spec = el.specs?.[el.job] || 0;
+      const mult = 1 + spec;
+      for (const [k, v] of Object.entries(job.production || {})) {
+        let amt = v * mult * global;
+        if (k === "knowledge") amt *= scholar;
+        add(prod, k, seasonize(k, amt));
+      }
+    }
 
-    const eat = this.s.pop * TA.FOOD_PER_POP;
+    const eat = (this.s.pop + this.eliteEat()) * TA.FOOD_PER_POP;
     add(cons, "food", eat);
 
     const net = {};
@@ -206,13 +252,13 @@ TA.Game = class Game {
     drain *= 1 - (fl.concealRelief || 0);
     net._conceal = conceal - drain;
     net._happy = (fl.happiness || 0) * 0.015;
-    if (this.s.pop > 0) {
+    if (this.s.pop + (this.s.elites || []).length > 0) {
       const foodNet = net.food || 0;
       if (foodNet >= 0 && (this.s.resources.food || 0) > 1) net._happy += 0.08;
       else net._happy -= 0.35;
     }
 
-    this._prod = { prod, cons, net, caps: this.caps(), housing: this.housing(), flags: fl };
+    this._prod = { prod, cons, net, caps, housing: this.housing(), flags: fl };
     return this._prod;
   }
 
@@ -344,13 +390,30 @@ TA.Game = class Game {
     return true;
   }
 
-  craft(id, qty = 1) {
+  craftHasRoom(id) {
     const c = TA.DATA.crafts[id];
+    if (!c) return false;
+    const keys = Object.keys(c.gain || {}).filter((k) => (c.gain[k] || 0) > 0);
+    if (!keys.length) return true;
+    const caps = this.caps();
+    const extra = 1 + (this.flags().extraCraft || 0);
+    return keys.every((k) => {
+      const cap = caps[k];
+      if (cap == null || !isFinite(cap)) return true;
+      const room = cap - (this.s.resources[k] || 0);
+      return room + 1e-9 >= (c.gain[k] || 0) * extra;
+    });
+  }
+
+  craft(id, qty = 1, opts = {}) {
+    const c = TA.DATA.crafts[id];
+    if (!c) return false;
     if (c.require?.tech && !this.s.techs[c.require.tech]) return false;
     const fl = this.flags();
     let made = 0;
     for (let i = 0; i < qty; i++) {
       if (!TA.canAfford(this.s.resources, c.cost)) break;
+      if (!this.craftHasRoom(id)) break;
       this.pay(c.cost);
       const gain = { ...c.gain };
       if (fl.extraCraft && Object.keys(gain).length) {
@@ -360,8 +423,19 @@ TA.Game = class Game {
       if (c.flags?.ropeCap) this.s.ropeBonus = Math.min(0.2, this.s.ropeBonus + c.flags.ropeCap);
       made++;
     }
-    if (made) this.tone(310);
+    if (made && !opts.silent) this.tone(310);
     return made > 0;
+  }
+
+  autoCraftTick(dt) {
+    if (!this.s.upgrades.autoCraft) return;
+    this._autoT = (this._autoT || 0) + dt;
+    while (this._autoT >= 1) {
+      this._autoT -= 1;
+      this.craft("plank", 1, { silent: true });
+      this.craft("brick", 1, { silent: true });
+      this.craft("fuel", 1, { silent: true });
+    }
   }
 
   assign(job, delta) {
@@ -374,6 +448,163 @@ TA.Game = class Game {
     } else {
       this.s.jobs[job] = Math.max(0, (this.s.jobs[job] || 0) + delta);
     }
+  }
+
+  drawStakeValue() {
+    return TA.clamp(Math.round(this.s.drawStake || 1), 1, 5);
+  }
+
+  drawCost(stake) {
+    const n = stake ?? this.drawStakeValue();
+    const b = TA.DATA.drawBase;
+    return { food: b.food * n, water: b.water * n };
+  }
+
+  drawWeights(stake) {
+    const t = ((stake ?? this.drawStakeValue()) - 1) / 4;
+    const lerp = (a, b) => a + (b - a) * t;
+    return [
+      ["common", lerp(60, 28)],
+      ["expert", lerp(26, 30)],
+      ["epic", lerp(10, 22)],
+      ["legendary", lerp(3.4, 14)],
+      ["mythic", lerp(0.6, 6)],
+    ];
+  }
+
+  drawOdds(stake) {
+    const w = this.drawWeights(stake);
+    const sum = w.reduce((a, x) => a + x[1], 0);
+    return Object.fromEntries(w.map(([id, n]) => [id, n / sum]));
+  }
+
+  canDrawElite() {
+    if (!this.s.techs.construction) return false;
+    if (this.s.pendingElite) return false;
+    if ((this.s.elites || []).length >= this.eliteHousing()) return false;
+    return TA.canAfford(this.s.resources, this.drawCost());
+  }
+
+  canRedrawElite() {
+    if (!this.s.pendingElite) return false;
+    return TA.canAfford(this.s.resources, this.drawCost());
+  }
+
+  rollRarity(stake) {
+    const w = this.drawWeights(stake);
+    const sum = w.reduce((a, x) => a + x[1], 0);
+    let r = Math.random() * sum;
+    for (const [id, n] of w) {
+      r -= n;
+      if (r <= 0) return id;
+    }
+    return "common";
+  }
+
+  shuffle(list) {
+    const a = list.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  pickEliteName(rarityId) {
+    const used = new Set((this.s.elites || []).map((e) => e.name));
+    if (this.s.pendingElite?.name) used.add(this.s.pendingElite.name);
+    const pool = TA.DATA.eliteNamesByRarity[rarityId] || TA.DATA.eliteNamesByRarity.common;
+    const names = this.shuffle(pool);
+    return names.find((n) => !used.has(n)) || names[0] + "·" + ((this.s.elites || []).length + 1);
+  }
+
+  makeElite(rarityId) {
+    const r = TA.DATA.rarities[rarityId];
+    const jobs = this.shuffle(Object.keys(TA.DATA.jobs));
+    const specs = {};
+    for (const id of jobs.slice(0, r.jobs)) specs[id] = r.bonus;
+    let passive = "";
+    if (r.passive) {
+      const ids = Object.keys(TA.DATA.elitePassives);
+      passive = ids[Math.floor(Math.random() * ids.length)];
+    }
+    return {
+      id: "e" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      name: this.pickEliteName(rarityId),
+      rarity: rarityId,
+      specs,
+      job: "",
+      passive,
+    };
+  }
+
+  drawElite() {
+    if (!this.canDrawElite()) return null;
+    const stake = this.drawStakeValue();
+    this.pay(this.drawCost(stake));
+    const elite = this.makeElite(this.rollRarity(stake));
+    this.s.pendingElite = elite;
+    const r = TA.DATA.rarities[elite.rarity];
+    this.log("event", `抽签遇见${r.name}居民「${elite.name}」，等待确认。`);
+    this.tone(elite.rarity === "mythic" ? 880 : elite.rarity === "legendary" ? 720 : 540);
+    return elite;
+  }
+
+  redrawElite() {
+    if (!this.canRedrawElite()) return null;
+    const prev = this.s.pendingElite;
+    const stake = this.drawStakeValue();
+    this.pay(this.drawCost(stake));
+    const elite = this.makeElite(this.rollRarity(stake));
+    this.s.pendingElite = elite;
+    const r = TA.DATA.rarities[elite.rarity];
+    this.log("event", `放弃「${prev.name}」，再次抽签遇见${r.name}居民「${elite.name}」。`);
+    this.tone(elite.rarity === "mythic" ? 880 : elite.rarity === "legendary" ? 720 : 540);
+    return elite;
+  }
+
+  keepPendingElite() {
+    const elite = this.s.pendingElite;
+    if (!elite) return null;
+    if ((this.s.elites || []).length >= this.eliteHousing()) return null;
+    if (!this.s.elites) this.s.elites = [];
+    this.s.elites.push(elite);
+    this.s.lastDrawId = elite.id;
+    this.s.pendingElite = null;
+    this.log("story", `「${elite.name}」留下，住进专属居所。`);
+    return elite;
+  }
+
+  abandonPendingElite() {
+    const elite = this.s.pendingElite;
+    if (!elite) return null;
+    this.s.pendingElite = null;
+    this.log("event", `「${elite.name}」被送回河岸。`);
+    return elite;
+  }
+
+  dismissElite(id) {
+    const list = this.s.elites || [];
+    const i = list.findIndex((e) => e.id === id);
+    if (i < 0) return null;
+    const gone = list.splice(i, 1)[0];
+    this.log("event", `${gone.name}被遣返，专属居所空出。`);
+    return gone;
+  }
+
+  setEliteJob(id, job) {
+    const el = (this.s.elites || []).find((e) => e.id === id);
+    if (!el) return;
+    if (job) {
+      const def = TA.DATA.jobs[job];
+      if (!def) return;
+      if (def.require?.tech && !this.s.techs[def.require.tech]) return;
+    }
+    el.job = job || "";
+  }
+
+  elitesOnJob(job) {
+    return (this.s.elites || []).filter((e) => e.job === job).length;
   }
 
   buyMeta(id) {
@@ -390,7 +621,7 @@ TA.Game = class Game {
     const techN = Object.keys(this.s.techs).length;
     const bN = Object.values(this.s.buildings).reduce((a, b) => a + b, 0);
     const fleet = this.s.resources.fleet || 0;
-    return Math.max(0, Math.floor(this.s.pop * 0.9 + techN * 1.6 + bN / 6 + fleet / 18 + (this.s.seenMax.knowledge || 0) / 800));
+    return Math.max(0, Math.floor(this.s.pop * 0.9 + (this.s.elites || []).length * 2.4 + techN * 1.6 + bN / 6 + fleet / 18 + (this.s.seenMax.knowledge || 0) / 800));
   }
 
   canPrestige() {
@@ -431,7 +662,7 @@ TA.Game = class Game {
   victory() {
     if (!this.canVictory() || this.s.victory) return false;
     this.s.victory = true;
-    this.log("story", "曲率环亮起。河声被抽成一条细线。2300年的地球在门对面——舰队、投降仪式、尚未熄灭的灯火。你带着一条河的文明，回家。");
+    this.log("story", "曲率环亮起。河声被抽成一条细线。2300年的地球在门户对面。舰队、投降仪式、尚未熄灭的灯火。你带着一条河流的文明，回家。");
     return true;
   }
 
@@ -514,7 +745,7 @@ TA.Game = class Game {
 
     if (this.s.concealment <= 0.5) {
       this.s.happiness = Math.max(0, this.s.happiness - 4 * dt);
-      if (Math.random() < dt * 0.02) this.log("warn", "隐蔽归零。智子的视野可能扫过这片河岸。产出被压制。");
+      if (Math.random() < dt * 0.02) this.log("warn", "隐蔽归零。智子的视野扫过这片河岸。产出被压制。");
     }
 
     const house = p.housing;
@@ -522,36 +753,49 @@ TA.Game = class Game {
       this.s.pop = house;
       for (const id of Object.keys(this.s.jobs)) this.s.jobs[id] = 0;
     }
+    if (!this.s.elites) this.s.elites = [];
+    const eh = this.eliteHousing();
+    while (this.s.elites.length > eh) {
+      const gone = this.s.elites.pop();
+      this.log("warn", `${gone.name}失去专属居所，离开营地。`);
+    }
+    if (this.s.pendingElite && this.s.elites.length >= eh) {
+      const gone = this.s.pendingElite;
+      this.s.pendingElite = null;
+      this.log("warn", `${gone.name}失去专属居所，离开营地。`);
+    }
     this._arrive = (this._arrive || 0);
     if (this.s.pop < house && this.s.happiness > 28 && (this.s.resources.food || 0) > 8) {
       this._arrive += dt * (0.06 + this.s.happiness / 1200);
       if (this._arrive >= 1) {
         this._arrive = 0;
         this.s.pop += 1;
-        if (this.s.pop === 1) this.log("story", "第一个河民走进棚屋。它把湿草铺在角落，像是早就知道这里会有屋顶。");
-        else if (this.s.pop % 5 === 0) this.log("event", `又一名河民迁入。现有 ${this.s.pop} 人。`);
+        if (this.s.pop === 1) this.log("story", "第一个居民走进棚屋。它把湿草铺在角落，像是早就知道这里会有屋顶。");
+        else if (this.s.pop % 5 === 0) this.log("event", `又一名居民迁入。现有 ${this.s.pop} 名居民。`);
       }
     }
-    if ((this.s.resources.food || 0) <= 0.05 && this.s.pop > 0) {
+    if ((this.s.resources.food || 0) <= 0.05 && (this.s.pop > 0 || (this.s.elites || []).length > 0)) {
       this._starve = (this._starve || 0) + dt;
       if (this._starve > 8) {
         this._starve = 0;
-        this.s.pop = Math.max(0, this.s.pop - 1);
-        const ids = Object.keys(this.s.jobs);
-        for (let i = ids.length - 1; i >= 0; i--) {
-          if (this.s.jobs[ids[i]] > 0) { this.s.jobs[ids[i]]--; break; }
+        if (this.s.pop > 0) {
+          this.s.pop = Math.max(0, this.s.pop - 1);
+          const ids = Object.keys(this.s.jobs);
+          for (let i = ids.length - 1; i >= 0; i--) {
+            if (this.s.jobs[ids[i]] > 0) { this.s.jobs[ids[i]]--; break; }
+          }
+          this.log("warn", "食物耗尽。一名居民离开，走回对岸的林中。");
+        } else if (this.s.elites.length) {
+          this.s.elites.sort((a, b) => (TA.DATA.rarities[a.rarity]?.order || 0) - (TA.DATA.rarities[b.rarity]?.order || 0));
+          const gone = this.s.elites.shift();
+          this.log("warn", `食物耗尽。${gone.name}离开专属居所。`);
         }
-        this.log("warn", "食物耗尽。一名河民离开，走回对岸的林中。");
       }
     } else this._starve = 0;
 
     this.s.stats.maxPop = Math.max(this.s.stats.maxPop, this.s.pop);
 
-    if (this.s.upgrades.autoCraft) {
-      this.craft("plank", 1);
-      this.craft("brick", 1);
-      this.craft("fuel", 1);
-    }
+    this.autoCraftTick(dt);
 
     this.s.time.frac += dt / TA.DAY_SEC;
     while (this.s.time.frac >= 1) {
@@ -589,7 +833,7 @@ TA.Game = class Game {
         this.tick(s);
         left -= s;
       }
-      if (dt > 15) this.log("event", `离线 ${Math.floor(dt / 60)} 分 ${Math.floor(dt % 60)} 秒。河仍在流。`);
+      if (dt > 15) this.log("event", `离线 ${Math.floor(dt / 60)} 分 ${Math.floor(dt % 60)} 秒。河水仍在流动。`);
     }
     this.s.lastTick = now;
   }
@@ -615,7 +859,7 @@ TA.Game = class Game {
       if (!raw) return new TA.Game();
       const s = JSON.parse(raw);
       const base = TA.defaultState();
-      const merged = { ...base, ...s, resources: { ...base.resources, ...s.resources }, jobs: { ...base.jobs, ...s.jobs }, time: { ...base.time, ...s.time }, prestige: { ...base.prestige, ...s.prestige } };
+      const merged = { ...base, ...s, resources: { ...base.resources, ...s.resources }, jobs: { ...base.jobs, ...s.jobs }, time: { ...base.time, ...s.time }, prestige: { ...base.prestige, ...s.prestige }, elites: Array.isArray(s.elites) ? s.elites : [], pendingElite: s.pendingElite && s.pendingElite.id ? s.pendingElite : null };
       return new TA.Game(merged);
     } catch {
       return new TA.Game();
