@@ -699,6 +699,8 @@ button, input, textarea, select { font-family: inherit; }
   background: #0c1418;
   border: 1px solid var(--line);
   color: var(--muted);
+  font-size: 0.62rem;
+  font-family: var(--font-mono);
 }
 .zone-cell .ico-zone { width: 14px; height: 14px; max-width: 16px; }
 .zone-cell.plain { color: #d4d0c8; }

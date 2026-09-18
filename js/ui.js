@@ -678,13 +678,13 @@ TA.UI = {
       const sel = zone.id === ex.selected;
       const busy = trip && trip.zone === zone.id;
       const zk = g.zoneKind(zone);
-      html += `<button type="button" class="zone-cell ${zk}${seen ? " visited" : ""}${sel ? " selected" : ""}${busy ? " busy" : ""}${open ? "" : " locked"}" data-zone="${zone.id}" ${open && !trip ? "" : "disabled"} title="${zone.name}">${TA.icon(zk, "ico-zone")}</button>`;
+      html += `<button type="button" class="zone-cell ${zk}${seen ? " visited" : ""}${sel ? " selected" : ""}${busy ? " busy" : ""}${open ? "" : " locked"}" data-zone="${zone.id}" ${open && !trip ? "" : "disabled"} title="第 ${zone.id + 1} 关 ${zone.name}">${zone.id + 1}</button>`;
     }
     html += `</div>`;
     if (z) {
       const travel = g.travelSec(z.dist);
       html += `<div class="draw-panel">${TA.icon(kind, "ico-lg")}<div class="draw-body">
-        <div class="item-title">${z.name}<span class="rarity-tag rarity-${kind === "boss" ? "mythic" : kind === "combat" ? "legendary" : kind === "rare" ? "epic" : "common"}">${kdef.name}</span></div>
+        <div class="item-title">第 ${z.id + 1} 关 · ${z.name}<span class="rarity-tag rarity-${kind === "boss" ? "mythic" : kind === "combat" ? "legendary" : kind === "rare" ? "epic" : "common"}">${kdef.name}</span></div>
         <p class="item-desc">${kdef.desc}<br>距离 ${z.dist}　单程 ${TA.fmt(travel, 0)} 秒　${z.enemy && kind !== "rare" ? `遭遇 ${z.enemy.name}` : "以采集为主"}</p>
       </div></div>`;
     }

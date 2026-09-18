@@ -27,7 +27,7 @@ TA.defaultState = function defaultState() {
     drawStake: 1,
     lastDrawId: "",
     vehicles: { foot: true },
-    explore: { selected: 0, squad: [], visited: {}, cleared: {}, trip: null },
+    explore: { selected: 0, squad: [], visited: {}, cleared: {}, passed: {}, trip: null },
     happiness: 72,
     concealment: 100,
     charge: 0,
@@ -619,9 +619,22 @@ TA.Game = class Game {
     if (!Array.isArray(ex.squad)) ex.squad = [];
     if (!ex.visited) ex.visited = {};
     if (!ex.cleared) ex.cleared = {};
+    if (!ex.passed) ex.passed = {};
     if (!ex.trip) ex.trip = null;
+    const visitedIds = Object.keys(ex.visited).map(Number).filter((n) => Number.isFinite(n));
+    if (visitedIds.length && !Object.keys(ex.passed).length) {
+      const max = Math.max(...visitedIds);
+      for (let i = 0; i <= max; i++) ex.passed[i] = true;
+    }
     const alive = new Set((this.s.elites || []).map((e) => e.id));
     ex.squad = ex.squad.filter((id) => alive.has(id));
+    if (!this.zoneUnlocked(ex.selected)) {
+      let last = 0;
+      for (let i = 0; i < TA.DATA.zones.length; i++) {
+        if (this.zoneUnlocked(i)) last = i;
+      }
+      ex.selected = last;
+    }
   }
 
   zoneById(id) {
@@ -635,10 +648,14 @@ TA.Game = class Game {
   }
 
   zoneUnlocked(id) {
-    const z = this.zoneById(id);
-    if (!z) return false;
-    if (z.dist <= 1) return true;
-    return TA.DATA.zones.some((o) => o.dist === z.dist - 1 && this.s.explore.visited[o.id]);
+    const n = Number(id);
+    if (!this.zoneById(n)) return false;
+    if (n === 0) return true;
+    const passed = this.s.explore?.passed || {};
+    for (let i = 0; i < n; i++) {
+      if (!passed[i]) return false;
+    }
+    return true;
   }
 
   bestVehicle() {
@@ -866,6 +883,11 @@ TA.Game = class Game {
     const z = this.zoneById(trip.zone);
     this.grant(trip.bag);
     this.s.explore.visited[z.id] = true;
+    if (trip.result !== "fail") {
+      this.s.explore.passed[z.id] = true;
+      if (z.id < 99) this.log("event", `第 ${z.id + 1} 关完成。第 ${z.id + 2} 关开启。`);
+      else this.log("event", "第 100 关完成。地图尽头到了。");
+    }
     const names = this.squadMembers(trip.squadIds);
     for (const el of names) el.away = false;
     const loot = Object.entries(trip.bag).filter(([, n]) => n > 0.05).map(([k, n]) => `${TA.DATA.resources[k]?.name || k} ${TA.fmt(n)}`).join("、");
