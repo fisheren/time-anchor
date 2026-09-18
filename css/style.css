@@ -726,6 +726,12 @@ button, input, textarea, select { font-family: inherit; }
   background: var(--line-strong);
 }
 .trip-phases .on { color: var(--anchor); }
+.explore-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0.55rem 0 0.2rem;
+}
 .hp-row {
   display: grid;
   grid-template-columns: 4.5rem 1fr;

@@ -27,7 +27,7 @@ TA.defaultState = function defaultState() {
     drawStake: 1,
     lastDrawId: "",
     vehicles: { foot: true },
-    explore: { selected: 0, squad: [], visited: {}, cleared: {}, passed: {}, trip: null },
+    explore: { selected: 0, squad: [], visited: {}, cleared: {}, passed: {}, trip: null, autoRun: false, autoAdvance: false, autoStop: "" },
     happiness: 72,
     concealment: 100,
     charge: 0,
@@ -621,6 +621,9 @@ TA.Game = class Game {
     if (!ex.cleared) ex.cleared = {};
     if (!ex.passed) ex.passed = {};
     if (!ex.trip) ex.trip = null;
+    if (typeof ex.autoRun !== "boolean") ex.autoRun = false;
+    if (typeof ex.autoAdvance !== "boolean") ex.autoAdvance = false;
+    if (ex.autoStop == null) ex.autoStop = "";
     const visitedIds = Object.keys(ex.visited).map(Number).filter((n) => Number.isFinite(n));
     if (visitedIds.length && !Object.keys(ex.passed).length) {
       const max = Math.max(...visitedIds);
@@ -741,13 +744,13 @@ TA.Game = class Game {
 
   selectZone(id) {
     this.ensureExplore();
-    if (!this.zoneById(id) || this.s.explore.trip) return;
+    if (!this.zoneById(id) || this.s.explore.trip || this.s.explore.autoRun) return;
     this.s.explore.selected = id;
   }
 
   toggleSquad(id) {
     this.ensureExplore();
-    if (this.s.explore.trip) return;
+    if (this.s.explore.trip || this.s.explore.autoRun) return;
     const el = (this.s.elites || []).find((e) => e.id === id);
     if (!el || el.away) return;
     const squad = this.s.explore.squad;
@@ -790,8 +793,9 @@ TA.Game = class Game {
     return TA.canAfford(this.s.resources, this.explorePackCost(z.id, squad.length));
   }
 
-  startExplore() {
+  startExplore(opts) {
     if (!this.canStartExplore()) return false;
+    const silent = !!opts?.silent;
     const z = this.zoneById(this.s.explore.selected);
     const squad = this.squadMembers(this.s.explore.squad);
     const pack = this.explorePackCost(z.id, squad.length);
@@ -814,13 +818,66 @@ TA.Game = class Game {
       enemyHpMax: enemy ? enemy.hp : 0,
       enemyAtk: enemy ? enemy.atk : 0,
       enemyName: enemy ? enemy.name : "",
+      kills: 0,
       result: "",
       note: `小队出发，前往${z.name}。`,
       vehicle: this.bestVehicle().id,
     };
-    this.log("event", `探索出发：${z.name}。交通：${this.bestVehicle().name}。`);
-    this.tone(420);
+    if (!silent) {
+      this.log("event", `探索出发：${z.name}。交通：${this.bestVehicle().name}。`);
+      this.tone(420);
+    }
     return true;
+  }
+
+  autoExploreBlockReason() {
+    this.ensureExplore();
+    if (!this.s.techs.construction) return "构架尚未完成，自动探险已经停止。";
+    const z = this.zoneById(this.s.explore.selected);
+    if (!z || !this.zoneUnlocked(z.id)) return "目标区块尚未开启，自动探险已经停止。";
+    const squad = this.squadMembers(this.s.explore.squad);
+    if (squad.length < 1) return "小队空缺，自动探险已经停止。";
+    if (squad.some((e) => e.away)) return "队员仍在外出，自动探险已经停止。";
+    if (!TA.canAfford(this.s.resources, this.explorePackCost(z.id, squad.length))) return "出行物资不足，自动探险已经停止。";
+    return "无法继续出发，自动探险已经停止。";
+  }
+
+  stopAutoExplore(msg) {
+    this.ensureExplore();
+    this.s.explore.autoRun = false;
+    this.s.explore.autoStop = msg || "自动探险已经停止。";
+    this.log("event", this.s.explore.autoStop);
+  }
+
+  toggleAutoExplore() {
+    this.ensureExplore();
+    const ex = this.s.explore;
+    if (ex.autoRun) {
+      ex.autoRun = false;
+      this.log("event", "自动探险已经停止。");
+      return "off";
+    }
+    ex.autoRun = true;
+    if (!ex.trip && !this.startExplore()) {
+      this.stopAutoExplore(this.autoExploreBlockReason());
+      return "fail";
+    }
+    this.log("event", "自动探险开始。小队将持续出发。");
+    return "on";
+  }
+
+  toggleAutoAdvance() {
+    this.ensureExplore();
+    if (!this.s.explore.autoRun) return false;
+    this.s.explore.autoAdvance = !this.s.explore.autoAdvance;
+    return this.s.explore.autoAdvance;
+  }
+
+  maybeContinueAutoExplore() {
+    this.ensureExplore();
+    if (!this.s.explore.autoRun || this.s.explore.trip) return;
+    if (this.startExplore({ silent: true })) return;
+    this.stopAutoExplore(this.autoExploreBlockReason());
   }
 
   beginReturn(note, result) {
@@ -837,19 +894,17 @@ TA.Game = class Game {
   beginExplorePhase() {
     const trip = this.s.explore.trip;
     const z = this.zoneById(trip.zone);
-    const kind = this.zoneKind(z);
     trip.phase = "explore";
     trip.t = 0;
     trip.dur = this.exploreSec(z);
-    if (kind === "combat" || kind === "boss") trip.note = `${z.enemy.name}挡住去路。`;
+    if (trip.enemyHpMax > 0) trip.note = `${trip.enemyName}挡住去路。`;
     else trip.note = `小队正在搜索${z.name}。`;
   }
 
   runExplorePhase(dt) {
     const trip = this.s.explore.trip;
     const z = this.zoneById(trip.zone);
-    const kind = this.zoneKind(z);
-    if (kind === "combat" || kind === "boss") {
+    if (trip.enemyHpMax > 0) {
       trip.enemyHp -= trip.atk * dt;
       trip.squadHp -= trip.enemyAtk * dt;
       if (trip.squadHp <= 0) {
@@ -862,9 +917,14 @@ TA.Game = class Game {
         trip.enemyHp = 0;
         const n = 7 + z.dist;
         for (let i = 0; i < n; i++) this.addTripBag(this.pickZoneLoot(z), 1);
+        trip.kills = (trip.kills || 0) + 1;
         if (z.kind === "boss") this.s.explore.cleared[z.id] = true;
-        this.beginReturn(`击败${trip.enemyName}，小队返回。`, "win");
-        return;
+        if (this.bagUsed(trip.bag) >= this.bagCap() - 1e-6) {
+          this.beginReturn(`击败 ${trip.kills} 波，物资已满，小队返回。`, "win");
+          return;
+        }
+        trip.enemyHp = trip.enemyHpMax;
+        trip.note = `击败第 ${trip.kills} 波，继续战斗。`;
       }
       return;
     }
@@ -881,26 +941,45 @@ TA.Game = class Game {
     const trip = this.s.explore.trip;
     if (!trip) return;
     const z = this.zoneById(trip.zone);
+    const result = trip.result;
     this.grant(trip.bag);
     this.s.explore.visited[z.id] = true;
-    if (trip.result !== "fail") {
+    if (result !== "fail") {
+      const firstPass = !this.s.explore.passed[z.id];
       this.s.explore.passed[z.id] = true;
-      if (z.id < 99) this.log("event", `第 ${z.id + 1} 关完成。第 ${z.id + 2} 关开启。`);
-      else this.log("event", "第 100 关完成。地图尽头到了。");
+      if (firstPass) {
+        if (z.id < 99) this.log("event", `第 ${z.id + 1} 关完成。第 ${z.id + 2} 关开启。`);
+        else this.log("event", "第 100 关完成。地图尽头到了。");
+      }
     }
     const names = this.squadMembers(trip.squadIds);
     for (const el of names) el.away = false;
     const loot = Object.entries(trip.bag).filter(([, n]) => n > 0.05).map(([k, n]) => `${TA.DATA.resources[k]?.name || k} ${TA.fmt(n)}`).join("、");
-    const word = trip.result === "fail" ? "探索撤回" : trip.result === "win" ? "探索胜利" : "探索归来";
+    const word = result === "fail" ? "探索撤回" : result === "win" ? "探索胜利" : "探索归来";
     this.log("story", `${word}：${z.name}。${loot ? "带回 " + loot + "。" : "双手空空。"}`);
     this.s.explore.trip = null;
-    this.tone(trip.result === "fail" ? 220 : 500);
+    if (result === "fail" || !this.s.explore.autoRun) this.tone(result === "fail" ? 220 : 500);
+    if (result === "fail") {
+      if (this.s.explore.autoRun) this.stopAutoExplore("战斗失败，自动探险已经停止。");
+      return;
+    }
+    if (this.s.explore.autoRun && this.s.explore.autoAdvance) {
+      const next = z.id + 1;
+      if (this.zoneUnlocked(next)) {
+        this.s.explore.selected = next;
+        this.log("event", `自动前进：第 ${next + 1} 关。`);
+      }
+    }
+    this.maybeContinueAutoExplore();
   }
 
   exploreTick(dt) {
     this.ensureExplore();
     const trip = this.s.explore.trip;
-    if (!trip) return;
+    if (!trip) {
+      this.maybeContinueAutoExplore();
+      return;
+    }
     trip.t += dt;
     if (trip.phase === "go") {
       const z = this.zoneById(trip.zone);
@@ -908,7 +987,6 @@ TA.Game = class Game {
       if (trip.t >= trip.dur) this.beginExplorePhase();
     } else if (trip.phase === "explore") this.runExplorePhase(dt);
     else if (trip.phase === "back") {
-      trip.note = "返回营地。";
       if (trip.t >= trip.dur) this.finishExplore();
     }
   }

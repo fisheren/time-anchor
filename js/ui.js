@@ -247,10 +247,25 @@ TA.UI = {
     if (e.target.closest("[data-explore-start]")) {
       if (g.startExplore()) this.toast("小队出发。");
       this.renderAll(true);
+      return;
+    }
+    if (e.target.closest("[data-auto-run]")) {
+      const r = g.toggleAutoExplore();
+      if (r === "on") this.toast("自动探险开始。小队将持续出发。");
+      else if (r === "off") this.toast("自动探险已经停止。");
+      this.flushAutoStop();
+      this.renderAll(true);
+      return;
+    }
+    if (e.target.closest("[data-auto-advance]")) {
+      const on = g.toggleAutoAdvance();
+      this.toast(on ? "胜利后自动前进。" : "继续探索当前关。");
+      this.renderAll(true);
     }
   },
 
   renderAll(full) {
+    this.flushAutoStop();
     this.renderTop();
     this.renderResources();
     const key = this.layoutKey();
@@ -281,7 +296,7 @@ TA.UI = {
       return d.gather && (!d.gatherUnlock || g.s.techs[d.gatherUnlock]);
     }).join(",");
     const tabs = TA.TABS.map((t) => (t.need && !g.s.techs[t.need] ? "0" : "1")).join("");
-    return [this.tab, visB, visT, visC, visU, visJ, gathers, tabs, g.s.victory ? "v" : "", g.s.techs.timeanchor ? "a" : "", g.canVictory() ? "w" : "", `e${(g.s.elites || []).length}-${g.eliteHousing()}-${g.drawStakeValue()}-${g.s.pendingElite?.id || ""}`, `x${g.s.explore?.trip?.phase || ""}-${g.s.explore?.trip?.zone ?? ""}-${(g.s.explore?.squad || []).join(".")}-${g.s.explore?.selected ?? 0}-${Object.keys(g.s.vehicles || {}).length}`].join("|");
+    return [this.tab, visB, visT, visC, visU, visJ, gathers, tabs, g.s.victory ? "v" : "", g.s.techs.timeanchor ? "a" : "", g.canVictory() ? "w" : "", `e${(g.s.elites || []).length}-${g.eliteHousing()}-${g.drawStakeValue()}-${g.s.pendingElite?.id || ""}`, `x${g.s.explore?.trip?.phase || ""}-${g.s.explore?.trip?.zone ?? ""}-${(g.s.explore?.squad || []).join(".")}-${g.s.explore?.selected ?? 0}-${Object.keys(g.s.vehicles || {}).length}-${g.s.explore?.autoRun ? 1 : 0}-${g.s.explore?.autoAdvance ? 1 : 0}`].join("|");
   },
 
   setDisabled(el, off) {
@@ -403,9 +418,11 @@ TA.UI = {
       } else if (this.tab === "explore") {
         const trip = g.s.explore?.trip;
         const v = g.bestVehicle();
+        const auto = g.s.explore?.autoRun ? "　自动探险" : "";
+        const adv = g.s.explore?.autoRun && g.s.explore?.autoAdvance ? " · 自动前进" : "";
         banner.textContent = trip
-          ? `${trip.note}　${trip.phase === "go" ? "前往" : trip.phase === "explore" ? "探索" : "返回"}`
-          : `交通 ${v.name}　载货 ${g.bagCap()}　已探访 ${Object.keys(g.s.explore.visited || {}).length} / 100`;
+          ? `${trip.note}　${trip.phase === "go" ? "前往" : trip.phase === "explore" ? "探索" : "返回"}${auto}${adv}`
+          : `交通 ${v.name}　载货 ${g.bagCap()}　已探访 ${Object.keys(g.s.explore.visited || {}).length} / 100${auto}${adv}`;
       } else if (this.tab === "space") {
         banner.textContent = `干预准备度 ${TA.fmt(g.readiness(), 0)}%　隐蔽 ${TA.fmt(g.s.concealment, 0)}%　舰队 ${TA.fmt(g.s.resources.fleet || 0)}`;
       } else if (this.tab === "anchor") {
@@ -434,6 +451,7 @@ TA.UI = {
     const ehp = root.querySelector("[data-enemy-hp]");
     if (ehp && g.s.explore?.trip) ehp.style.width = `${TA.clamp((g.s.explore.trip.enemyHp / (g.s.explore.trip.enemyHpMax || 1)) * 100, 0, 100)}%`;
     root.querySelectorAll("[data-explore-start]").forEach((btn) => this.setDisabled(btn, !g.canStartExplore()));
+    root.querySelectorAll("[data-auto-advance]").forEach((btn) => this.setDisabled(btn, !g.s.explore?.autoRun));
     root.querySelectorAll("[data-vehicle]").forEach((btn) => {
       const id = btn.dataset.vehicle;
       const v = TA.DATA.vehicles[id];
@@ -654,7 +672,7 @@ TA.UI = {
     const pack = g.explorePackCost(ex.selected, Math.max(1, squad.length));
     const visited = Object.keys(ex.visited).length;
     let html = `<p class="flavor">河岸以外仍是智子的盲区。高级居民组成小队，一次只踏入一个区块。路程越远，双腿越不够用。</p>
-      <div class="idle-banner" data-banner>${trip ? `${trip.note}　${trip.phase === "go" ? "前往" : trip.phase === "explore" ? "探索" : "返回"}` : `交通 ${v.name}　载货 ${g.bagCap()}　已探访 ${visited} / 100`}</div>`;
+      <div class="idle-banner" data-banner>${trip ? `${trip.note}　${trip.phase === "go" ? "前往" : trip.phase === "explore" ? "探索" : "返回"}` : `交通 ${v.name}　载货 ${g.bagCap()}　已探访 ${visited} / 100`}${ex.autoRun ? "　自动探险" : ""}${ex.autoRun && ex.autoAdvance ? " · 自动前进" : ""}</div>`;
     html += `<div class="trip-phases">
       ${[["go", "前往"], ["explore", "探索"], ["back", "返回"]].map(([id, name]) => `<span class="${trip?.phase === id ? "on" : ""}">${name}</span>`).join("<i></i>")}
     </div>`;
@@ -678,7 +696,7 @@ TA.UI = {
       const sel = zone.id === ex.selected;
       const busy = trip && trip.zone === zone.id;
       const zk = g.zoneKind(zone);
-      html += `<button type="button" class="zone-cell ${zk}${seen ? " visited" : ""}${sel ? " selected" : ""}${busy ? " busy" : ""}${open ? "" : " locked"}" data-zone="${zone.id}" ${open && !trip ? "" : "disabled"} title="第 ${zone.id + 1} 关 ${zone.name}">${zone.id + 1}</button>`;
+      html += `<button type="button" class="zone-cell ${zk}${seen ? " visited" : ""}${sel ? " selected" : ""}${busy ? " busy" : ""}${open ? "" : " locked"}" data-zone="${zone.id}" ${open && !trip && !ex.autoRun ? "" : "disabled"} title="第 ${zone.id + 1} 关 ${zone.name}">${zone.id + 1}</button>`;
     }
     html += `</div>`;
     if (z) {
@@ -704,7 +722,7 @@ TA.UI = {
       html += `<div class="elite-list">`;
       for (const el of g.s.elites) {
         const picked = ex.squad.includes(el.id);
-        html += `<button type="button" class="elite-card rarity-${el.rarity}${picked ? " picked" : ""}" data-squad="${el.id}" ${el.away || trip ? "disabled" : ""}>
+        html += `<button type="button" class="elite-card rarity-${el.rarity}${picked ? " picked" : ""}" data-squad="${el.id}" ${el.away || trip || ex.autoRun ? "disabled" : ""}>
           ${TA.icon(Object.keys(el.specs || {})[0] || "forager", "ico-lg")}
           <div class="item-body">
             <div class="item-title"><span class="rarity-tag rarity-${el.rarity}">${TA.DATA.rarities[el.rarity].name}</span>${el.name}${el.away ? " · 外出" : picked ? " · 已编入" : ""}</div>
@@ -715,7 +733,11 @@ TA.UI = {
       html += `</div>`;
     }
     html += `<div class="item-cost">出行消耗 ${squad.length ? TA.costText(pack, g.s.resources) : "需要编入小队"}</div>
-      <button type="button" class="btn btn-anchor" data-explore-start ${g.canStartExplore() ? "" : "disabled"}>出发探索</button>`;
+      <div class="explore-actions">
+        <button type="button" class="btn btn-anchor" data-explore-start ${g.canStartExplore() ? "" : "disabled"}>出发探索</button>
+        <button type="button" class="btn ${ex.autoRun ? "btn-anchor" : ""}" data-auto-run>${ex.autoRun ? "停止自动探险" : "自动探险"}</button>
+        <button type="button" class="btn ${ex.autoAdvance ? "btn-anchor" : ""}" data-auto-advance ${ex.autoRun ? "" : "disabled"}>自动前进：${ex.autoAdvance ? "开启" : "关闭"}</button>
+      </div>`;
     return html;
   },
 
@@ -891,12 +913,19 @@ TA.UI = {
     };
   },
 
-  toast(msg) {
+  flushAutoStop() {
+    const msg = this.game.s.explore?.autoStop;
+    if (!msg) return;
+    this.game.s.explore.autoStop = "";
+    this.toast(msg, 3200);
+  },
+
+  toast(msg, ms) {
     const el = document.getElementById("toast");
     el.hidden = false;
     el.textContent = msg;
     clearTimeout(this._toast);
-    this._toast = setTimeout(() => { el.hidden = true; }, 1800);
+    this._toast = setTimeout(() => { el.hidden = true; }, ms || 1800);
   },
 
   stars() {
