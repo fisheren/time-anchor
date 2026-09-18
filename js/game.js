@@ -26,6 +26,8 @@ TA.defaultState = function defaultState() {
     pendingElite: null,
     drawStake: 1,
     lastDrawId: "",
+    vehicles: { foot: true },
+    explore: { selected: 0, squad: [], visited: {}, cleared: {}, trip: null },
     happiness: 72,
     concealment: 100,
     charge: 0,
@@ -120,7 +122,7 @@ TA.Game = class Game {
   eliteEat() {
     let n = 0;
     for (const el of this.s.elites || []) {
-      n += TA.DATA.rarities[el.rarity]?.eat || 1;
+      n += el.away ? 0 : (TA.DATA.rarities[el.rarity]?.eat || 1);
     }
     return n;
   }
@@ -220,7 +222,7 @@ TA.Game = class Game {
       }
     }
     for (const el of this.s.elites || []) {
-      if (!el.job) continue;
+      if (!el.job || el.away) continue;
       const job = TA.DATA.jobs[el.job];
       if (!job) continue;
       const spec = el.specs?.[el.job] || 0;
@@ -587,6 +589,7 @@ TA.Game = class Game {
     const list = this.s.elites || [];
     const i = list.findIndex((e) => e.id === id);
     if (i < 0) return null;
+    if (list[i].away) return null;
     const gone = list.splice(i, 1)[0];
     this.log("event", `${gone.name}被遣返，专属居所空出。`);
     return gone;
@@ -594,7 +597,7 @@ TA.Game = class Game {
 
   setEliteJob(id, job) {
     const el = (this.s.elites || []).find((e) => e.id === id);
-    if (!el) return;
+    if (!el || el.away) return;
     if (job) {
       const def = TA.DATA.jobs[job];
       if (!def) return;
@@ -604,7 +607,288 @@ TA.Game = class Game {
   }
 
   elitesOnJob(job) {
-    return (this.s.elites || []).filter((e) => e.job === job).length;
+    return (this.s.elites || []).filter((e) => e.job === job && !e.away).length;
+  }
+
+  ensureExplore() {
+    if (!this.s.vehicles) this.s.vehicles = {};
+    this.s.vehicles.foot = true;
+    if (!this.s.explore) this.s.explore = {};
+    const ex = this.s.explore;
+    if (ex.selected == null) ex.selected = 0;
+    if (!Array.isArray(ex.squad)) ex.squad = [];
+    if (!ex.visited) ex.visited = {};
+    if (!ex.cleared) ex.cleared = {};
+    if (!ex.trip) ex.trip = null;
+    const alive = new Set((this.s.elites || []).map((e) => e.id));
+    ex.squad = ex.squad.filter((id) => alive.has(id));
+  }
+
+  zoneById(id) {
+    return TA.DATA.zones[id] || null;
+  }
+
+  zoneKind(z) {
+    if (!z) return "plain";
+    if (z.kind === "boss" && this.s.explore?.cleared?.[z.id]) return "rare";
+    return z.kind;
+  }
+
+  zoneUnlocked(id) {
+    const z = this.zoneById(id);
+    if (!z) return false;
+    if (z.dist <= 1) return true;
+    return TA.DATA.zones.some((o) => o.dist === z.dist - 1 && this.s.explore.visited[o.id]);
+  }
+
+  bestVehicle() {
+    this.ensureExplore();
+    let best = TA.DATA.vehicles.foot;
+    for (const [id, owned] of Object.entries(this.s.vehicles)) {
+      if (!owned) continue;
+      const v = TA.DATA.vehicles[id];
+      if (v && v.speed > best.speed) best = v;
+    }
+    return best;
+  }
+
+  travelSec(dist) {
+    return (14 * dist) / this.bestVehicle().speed;
+  }
+
+  exploreSec(z) {
+    const kind = this.zoneKind(z);
+    if (kind === "combat" || kind === "boss") return 0;
+    return kind === "rare" ? 10 + z.dist * 1.1 : 8 + z.dist * 0.75;
+  }
+
+  bagCap() {
+    this.ensureExplore();
+    const n = (this.s.explore.trip?.squadIds || this.s.explore.squad || []).length;
+    return 12 + n * 6 + (this.bestVehicle().cargo || 0);
+  }
+
+  bagUsed(bag) {
+    return Object.values(bag || {}).reduce((a, b) => a + b, 0);
+  }
+
+  squadMembers(ids) {
+    const set = new Set(ids || []);
+    return (this.s.elites || []).filter((e) => set.has(e.id));
+  }
+
+  squadPower(ids) {
+    let hp = 0;
+    let atk = 0;
+    for (const el of this.squadMembers(ids)) {
+      const p = TA.DATA.elitePower[el.rarity] || TA.DATA.elitePower.common;
+      hp += p.hp;
+      atk += p.atk;
+    }
+    return { hp, atk };
+  }
+
+  explorePackCost(zoneId, n) {
+    const z = this.zoneById(zoneId);
+    if (!z || n < 1) return { food: 0, water: 0 };
+    const exp = this.exploreSec(z) || (8 + z.dist);
+    const sec = this.travelSec(z.dist) * 2 + exp;
+    const food = n * TA.FOOD_PER_POP * sec * 1.25;
+    return { food, water: food * 0.7 };
+  }
+
+  canSeeVehicle(id) {
+    const v = TA.DATA.vehicles[id];
+    if (!v) return false;
+    if (id === "foot") return true;
+    if (!this.s.techs.construction) return false;
+    if (this.s.vehicles?.[id]) return true;
+    if (v.require?.tech && !this.s.techs[v.require.tech]) return false;
+    if (v.require?.vehicle && !this.s.vehicles?.[v.require.vehicle]) return false;
+    return true;
+  }
+
+  buyVehicle(id) {
+    this.ensureExplore();
+    const v = TA.DATA.vehicles[id];
+    if (!v || id === "foot" || this.s.vehicles[id]) return false;
+    if (v.require?.tech && !this.s.techs[v.require.tech]) return false;
+    if (v.require?.vehicle && !this.s.vehicles[v.require.vehicle]) return false;
+    if (!TA.canAfford(this.s.resources, v.cost)) return false;
+    this.pay(v.cost);
+    this.s.vehicles[id] = true;
+    this.log("event", `交通工具制成：${v.name}。前往时间缩短。`);
+    this.tone(360);
+    return true;
+  }
+
+  selectZone(id) {
+    this.ensureExplore();
+    if (!this.zoneById(id) || this.s.explore.trip) return;
+    this.s.explore.selected = id;
+  }
+
+  toggleSquad(id) {
+    this.ensureExplore();
+    if (this.s.explore.trip) return;
+    const el = (this.s.elites || []).find((e) => e.id === id);
+    if (!el || el.away) return;
+    const squad = this.s.explore.squad;
+    const i = squad.indexOf(id);
+    if (i >= 0) squad.splice(i, 1);
+    else if (squad.length < 5) squad.push(id);
+  }
+
+  pickZoneLoot(z) {
+    const loot = z.loot || { wood: 1 };
+    const entries = Object.entries(loot).filter(([, w]) => w > 0);
+    const sum = entries.reduce((a, x) => a + x[1], 0);
+    let r = Math.random() * sum;
+    for (const [k, w] of entries) {
+      r -= w;
+      if (r <= 0) return k;
+    }
+    return entries[0][0];
+  }
+
+  addTripBag(k, amt) {
+    const trip = this.s.explore.trip;
+    if (!trip || amt <= 0) return 0;
+    const room = this.bagCap() - this.bagUsed(trip.bag);
+    if (room <= 0) return 0;
+    const n = Math.min(amt, room);
+    trip.bag[k] = (trip.bag[k] || 0) + n;
+    return n;
+  }
+
+  canStartExplore() {
+    this.ensureExplore();
+    if (!this.s.techs.construction) return false;
+    if (this.s.explore.trip) return false;
+    const z = this.zoneById(this.s.explore.selected);
+    if (!z || !this.zoneUnlocked(z.id)) return false;
+    const squad = this.squadMembers(this.s.explore.squad);
+    if (squad.length < 1 || squad.length > 5) return false;
+    if (squad.some((e) => e.away)) return false;
+    return TA.canAfford(this.s.resources, this.explorePackCost(z.id, squad.length));
+  }
+
+  startExplore() {
+    if (!this.canStartExplore()) return false;
+    const z = this.zoneById(this.s.explore.selected);
+    const squad = this.squadMembers(this.s.explore.squad);
+    const pack = this.explorePackCost(z.id, squad.length);
+    this.pay(pack);
+    const power = this.squadPower(this.s.explore.squad);
+    const kind = this.zoneKind(z);
+    const enemy = (kind === "combat" || kind === "boss") ? { ...z.enemy } : null;
+    for (const el of squad) el.away = true;
+    this.s.explore.trip = {
+      zone: z.id,
+      phase: "go",
+      t: 0,
+      dur: this.travelSec(z.dist),
+      bag: {},
+      squadIds: squad.map((e) => e.id),
+      squadHp: power.hp,
+      squadHpMax: power.hp,
+      atk: power.atk,
+      enemyHp: enemy ? enemy.hp : 0,
+      enemyHpMax: enemy ? enemy.hp : 0,
+      enemyAtk: enemy ? enemy.atk : 0,
+      enemyName: enemy ? enemy.name : "",
+      result: "",
+      note: `小队出发，前往${z.name}。`,
+      vehicle: this.bestVehicle().id,
+    };
+    this.log("event", `探索出发：${z.name}。交通：${this.bestVehicle().name}。`);
+    this.tone(420);
+    return true;
+  }
+
+  beginReturn(note, result) {
+    const trip = this.s.explore.trip;
+    if (!trip || trip.phase === "back") return;
+    const z = this.zoneById(trip.zone);
+    trip.phase = "back";
+    trip.t = 0;
+    trip.dur = this.travelSec(z.dist);
+    trip.note = note;
+    trip.result = result || trip.result || "ok";
+  }
+
+  beginExplorePhase() {
+    const trip = this.s.explore.trip;
+    const z = this.zoneById(trip.zone);
+    const kind = this.zoneKind(z);
+    trip.phase = "explore";
+    trip.t = 0;
+    trip.dur = this.exploreSec(z);
+    if (kind === "combat" || kind === "boss") trip.note = `${z.enemy.name}挡住去路。`;
+    else trip.note = `小队正在搜索${z.name}。`;
+  }
+
+  runExplorePhase(dt) {
+    const trip = this.s.explore.trip;
+    const z = this.zoneById(trip.zone);
+    const kind = this.zoneKind(z);
+    if (kind === "combat" || kind === "boss") {
+      trip.enemyHp -= trip.atk * dt;
+      trip.squadHp -= trip.enemyAtk * dt;
+      if (trip.squadHp <= 0) {
+        trip.squadHp = 0;
+        for (const k of Object.keys(trip.bag)) trip.bag[k] *= 0.4;
+        this.beginReturn("战斗失败，小队带着残存物资撤回。", "fail");
+        return;
+      }
+      if (trip.enemyHp <= 0) {
+        trip.enemyHp = 0;
+        const n = 7 + z.dist;
+        for (let i = 0; i < n; i++) this.addTripBag(this.pickZoneLoot(z), 1);
+        if (z.kind === "boss") this.s.explore.cleared[z.id] = true;
+        this.beginReturn(`击败${trip.enemyName}，小队返回。`, "win");
+        return;
+      }
+      return;
+    }
+    const rate = Math.max(0.4, trip.atk * 0.16);
+    this.addTripBag(this.pickZoneLoot(z), rate * dt);
+    if (this.bagUsed(trip.bag) >= this.bagCap() - 1e-6) {
+      this.beginReturn("物资已满，小队收队返回。", "full");
+      return;
+    }
+    if (trip.dur > 0 && trip.t >= trip.dur) this.beginReturn("探索结束，小队返回。", "ok");
+  }
+
+  finishExplore() {
+    const trip = this.s.explore.trip;
+    if (!trip) return;
+    const z = this.zoneById(trip.zone);
+    this.grant(trip.bag);
+    this.s.explore.visited[z.id] = true;
+    const names = this.squadMembers(trip.squadIds);
+    for (const el of names) el.away = false;
+    const loot = Object.entries(trip.bag).filter(([, n]) => n > 0.05).map(([k, n]) => `${TA.DATA.resources[k]?.name || k} ${TA.fmt(n)}`).join("、");
+    const word = trip.result === "fail" ? "探索撤回" : trip.result === "win" ? "探索胜利" : "探索归来";
+    this.log("story", `${word}：${z.name}。${loot ? "带回 " + loot + "。" : "双手空空。"}`);
+    this.s.explore.trip = null;
+    this.tone(trip.result === "fail" ? 220 : 500);
+  }
+
+  exploreTick(dt) {
+    this.ensureExplore();
+    const trip = this.s.explore.trip;
+    if (!trip) return;
+    trip.t += dt;
+    if (trip.phase === "go") {
+      const z = this.zoneById(trip.zone);
+      trip.note = `前往${z.name}。`;
+      if (trip.t >= trip.dur) this.beginExplorePhase();
+    } else if (trip.phase === "explore") this.runExplorePhase(dt);
+    else if (trip.phase === "back") {
+      trip.note = "返回营地。";
+      if (trip.t >= trip.dur) this.finishExplore();
+    }
   }
 
   buyMeta(id) {
@@ -756,7 +1040,12 @@ TA.Game = class Game {
     if (!this.s.elites) this.s.elites = [];
     const eh = this.eliteHousing();
     while (this.s.elites.length > eh) {
-      const gone = this.s.elites.pop();
+      let idx = -1;
+      for (let i = this.s.elites.length - 1; i >= 0; i--) {
+        if (!this.s.elites[i].away) { idx = i; break; }
+      }
+      if (idx < 0) break;
+      const gone = this.s.elites.splice(idx, 1)[0];
       this.log("warn", `${gone.name}失去专属居所，离开营地。`);
     }
     if (this.s.pendingElite && this.s.elites.length >= eh) {
@@ -785,10 +1074,13 @@ TA.Game = class Game {
             if (this.s.jobs[ids[i]] > 0) { this.s.jobs[ids[i]]--; break; }
           }
           this.log("warn", "食物耗尽。一名居民离开，走回对岸的林中。");
-        } else if (this.s.elites.length) {
-          this.s.elites.sort((a, b) => (TA.DATA.rarities[a.rarity]?.order || 0) - (TA.DATA.rarities[b.rarity]?.order || 0));
-          const gone = this.s.elites.shift();
-          this.log("warn", `食物耗尽。${gone.name}离开专属居所。`);
+        } else {
+          const home = this.s.elites.map((e, i) => [e, i]).filter(([e]) => !e.away);
+          home.sort((a, b) => (TA.DATA.rarities[a[0].rarity]?.order || 0) - (TA.DATA.rarities[b[0].rarity]?.order || 0));
+          if (home.length) {
+            const gone = this.s.elites.splice(home[0][1], 1)[0];
+            this.log("warn", `食物耗尽。${gone.name}离开专属居所。`);
+          }
         }
       }
     } else this._starve = 0;
@@ -796,6 +1088,7 @@ TA.Game = class Game {
     this.s.stats.maxPop = Math.max(this.s.stats.maxPop, this.s.pop);
 
     this.autoCraftTick(dt);
+    this.exploreTick(dt);
 
     this.s.time.frac += dt / TA.DAY_SEC;
     while (this.s.time.frac >= 1) {
@@ -859,7 +1152,7 @@ TA.Game = class Game {
       if (!raw) return new TA.Game();
       const s = JSON.parse(raw);
       const base = TA.defaultState();
-      const merged = { ...base, ...s, resources: { ...base.resources, ...s.resources }, jobs: { ...base.jobs, ...s.jobs }, time: { ...base.time, ...s.time }, prestige: { ...base.prestige, ...s.prestige }, elites: Array.isArray(s.elites) ? s.elites : [], pendingElite: s.pendingElite && s.pendingElite.id ? s.pendingElite : null };
+      const merged = { ...base, ...s, resources: { ...base.resources, ...s.resources }, jobs: { ...base.jobs, ...s.jobs }, time: { ...base.time, ...s.time }, prestige: { ...base.prestige, ...s.prestige }, elites: Array.isArray(s.elites) ? s.elites : [], pendingElite: s.pendingElite && s.pendingElite.id ? s.pendingElite : null, vehicles: { foot: true, ...(s.vehicles || {}) }, explore: { selected: 0, squad: [], visited: {}, cleared: {}, trip: null, ...(s.explore || {}) } };
       return new TA.Game(merged);
     } catch {
       return new TA.Game();

@@ -669,19 +669,77 @@ button, input, textarea, select { font-family: inherit; }
 }
 
 .progress-inline {
-  height: 4px;
-  background: #151c22;
-  margin-top: 0.45rem;
+  height: 6px;
+  background: #0c1418;
+  border: 1px solid var(--line);
+  margin: 0.45rem 0 0.7rem;
 }
 .progress-inline i {
   display: block;
   height: 100%;
-  background: var(--anchor);
+  background: linear-gradient(90deg, var(--anchor), var(--amber));
 }
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-thumb { background: #243038; }
 ::-webkit-scrollbar-track { background: transparent; }
+
+.zone-grid {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 3px;
+  max-width: 46rem;
+  margin-bottom: 0.9rem;
+}
+.zone-cell {
+  aspect-ratio: 1;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  background: #0c1418;
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+.zone-cell .ico-zone { width: 14px; height: 14px; max-width: 16px; }
+.zone-cell.plain { color: #d4d0c8; }
+.zone-cell.rare { color: #b07cff; }
+.zone-cell.combat { color: #efc94c; }
+.zone-cell.boss { color: #e85b4a; }
+.zone-cell.visited { box-shadow: inset 0 0 0 1px rgba(212, 165, 116, 0.45); }
+.zone-cell.selected { border-color: var(--anchor); background: rgba(18, 64, 60, 0.9); }
+.zone-cell.busy { box-shadow: 0 0 10px var(--anchor-glow); }
+.zone-cell.locked { opacity: 0.32; }
+.trip-phases {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.7rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+}
+.trip-phases i {
+  width: 1.6rem;
+  height: 1px;
+  background: var(--line-strong);
+}
+.trip-phases .on { color: var(--anchor); }
+.hp-row {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr;
+  gap: 0.4rem;
+  align-items: center;
+  font-size: 0.75rem;
+  margin-top: 0.35rem;
+}
+.elite-card.picked { border-color: var(--anchor); }
+button.elite-card {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
 
 @media (max-width: 900px) {
   body { overflow: auto; }

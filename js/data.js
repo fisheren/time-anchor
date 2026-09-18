@@ -345,14 +345,14 @@ TA.DATA = {
       desc: "横梁、立柱、斜撑。棚屋不再只是「靠在一起的木头」。",
       cost: { knowledge: 35, wood: 30, fiber: 20 },
       require: { tech: "fire" },
-      unlocks: "棚屋、林场、仓储、专属厢房、招募抽签。",
+      unlocks: "棚屋、林场、仓储、专属厢房、招募抽签、探索。",
     },
     tools: {
       name: "工具", era: "生存", order: 4,
       desc: "刃口改变物种的命运。你把这句话讲给居民听，他们把石头磨得更好。",
       cost: { knowledge: 50, wood: 25, stone: 20 },
       require: { tech: "construction" },
-      unlocks: "采石场、石工。",
+      unlocks: "采石场、石工、板车。",
     },
     agriculture: {
       name: "农耕", era: "聚落", order: 5,
@@ -394,7 +394,7 @@ TA.DATA = {
       desc: "齿轮比肌肉诚实。",
       cost: { knowledge: 320, metal: 15, plank: 20, wood: 50 },
       require: { tech: "smelting" },
-      unlocks: "水车。",
+      unlocks: "水车、河舟。",
     },
     irrigation: {
       name: "水利", era: "聚落", order: 11,
@@ -409,7 +409,7 @@ TA.DATA = {
       desc: "黑暗被重新定义。义体第一次感到「故乡的电流」。",
       cost: { knowledge: 520, metal: 30, energy: 40 },
       require: { tech: "mechanics" },
-      unlocks: "河坝电站、实验室、专属院落。",
+      unlocks: "河坝电站、实验室、专属院落、蒸汽车。",
     },
     chemistry: {
       name: "化学", era: "工业", order: 13,
@@ -430,7 +430,7 @@ TA.DATA = {
       desc: "芯片终于遇见了它在这颗星球上的亲戚。",
       cost: { knowledge: 1400, metal: 40, remnant: 4, energy: 80 },
       require: { tech: "electricity" },
-      unlocks: "光伏、装配厂、技术员、电路。",
+      unlocks: "光伏、装配厂、技术员、电路、浮橇。",
     },
     computing: {
       name: "计算重构", era: "先进", order: 16,
@@ -726,6 +726,28 @@ TA.DATA = {
   },
 
   drawBase: { food: 16, water: 16 },
+  elitePower: {
+    common: { hp: 14, atk: 2.2 },
+    expert: { hp: 20, atk: 3.4 },
+    epic: { hp: 28, atk: 4.8 },
+    legendary: { hp: 40, atk: 6.8 },
+    mythic: { hp: 56, atk: 9.4 },
+  },
+  zoneKinds: {
+    plain: { id: "plain", name: "普通区块", desc: "河岸外的土地。采集常见物资，危险较低。" },
+    rare: { id: "rare", name: "稀有区块", desc: "地层里藏着营地没有的材料。" },
+    combat: { id: "combat", name: "战斗区块", desc: "对岸那些眼睛在这里不再只是张望。" },
+    boss: { id: "boss", name: "首领区块", desc: "一块被巨大生物占据的土地。击败后才能真正踏平。" },
+  },
+  vehicles: {
+    foot: { id: "foot", name: "步行", desc: "沿着河岸与兽径走。越远越慢。", speed: 1, cargo: 0, cost: {}, require: {} },
+    raft: { id: "raft", name: "木筏", desc: "让河流替双腿做一部分工作。", speed: 1.55, cargo: 6, cost: { wood: 48, fiber: 28 }, require: { tech: "construction" } },
+    wagon: { id: "wagon", name: "板车", desc: "木板、轮轴、以及不再用肩胛骨去扛石头。", speed: 2.1, cargo: 12, cost: { plank: 32, fiber: 20, stone: 16 }, require: { tech: "tools", vehicle: "raft" } },
+    boat: { id: "boat", name: "河舟", desc: "桨与舵。前往时间开始缩短。", speed: 2.9, cargo: 16, cost: { plank: 48, fiber: 24, metal: 8 }, require: { tech: "mechanics", vehicle: "wagon" } },
+    steam: { id: "steam", name: "蒸汽车", desc: "把锅炉绑上轮子。远处的区块变得可以当天往返。", speed: 4, cargo: 22, cost: { metal: 36, brick: 24, energy: 40 }, require: { tech: "electricity", vehicle: "boat" } },
+    hover: { id: "hover", name: "浮橇", desc: "贴着地面滑动。智子看不见，兽类也很难追上。", speed: 5.6, cargo: 28, cost: { alloy: 18, circuit: 8, energy: 50 }, require: { tech: "electronics", vehicle: "steam" } },
+  },
+  zones: [],
   eliteNamesByRarity: {
     common: ["第谷", "哈雷", "赫歇尔", "拉瓦锡", "道尔顿", "门捷列夫", "焦耳", "安培", "欧姆", "赫兹", "狄拉克", "庞加莱", "伯努利", "胡克", "卡文迪许", "伽罗瓦", "黎曼", "柯西", "阿贝尔", "林奈", "拉马克", "华莱士", "詹纳", "南丁格尔", "西塞罗", "修昔底德", "休谟", "霍布斯", "李嘉图", "维瓦尔第", "鉴真", "郦道元", "詹天佑", "开尔文", "康托尔", "奥斯特", "基尔霍夫", "布丰", "德彪西", "勒让德"],
     expert: ["莱布尼茨", "帕斯卡", "普朗克", "费曼", "香农", "孟德尔", "哈维", "希波克拉底", "托勒密", "希罗多德", "卢梭", "黑格尔", "亚当斯密", "马基雅维利", "洛克", "莫奈", "柴可夫斯基", "玄奘", "郑和", "蔡伦", "毕昇", "鲁班", "墨子", "扁鹊", "华佗", "沈括", "徐霞客", "商鞅", "管仲", "织田信长", "萨拉丁", "傅里叶", "拉普拉斯", "伦琴", "冯诺依曼", "海森堡"],
@@ -802,3 +824,50 @@ TA.DATA.crafts.rope = {
   flags: { ropeCap: 0.01 },
 };
 TA.DATA.buildings.drive.cost = { alloy: 80, circuit: 40, antimatter: 4, crystal: 3 };
+
+TA.DATA.zones = (function makeZones() {
+  const rings = ["河缘", "苔坡", "雾林", "页岩", "霜原", "铜谷", "夜泽", "崖径", "盲湾", "余烬"];
+  const cols = ["东岸", "西滩", "北岗", "南浦", "中洲", "裂谷", "浅湾", "深林", "乱石", "静野"];
+  const bosses = [19, 39, 59, 79, 99];
+  const bossNames = ["河瞳兽", "页岩巨蜥", "雾中守门", "余烬巨影", "盲区残骸"];
+  const combatNames = ["棘兽", "石甲虫", "雾犬", "铜鳞", "夜瞳", "岸影"];
+  const list = [];
+  for (let i = 0; i < 100; i++) {
+    const dist = Math.floor(i / 10) + 1;
+    const col = i % 10;
+    const seed = ((i * 9301 + 49297) % 233280) / 233280;
+    let kind = "plain";
+    if (bosses.includes(i)) kind = "boss";
+    else if (seed < 0.05 + dist * 0.03) kind = "combat";
+    else if (seed > 0.74 - dist * 0.018) kind = "rare";
+    const loot = {};
+    if (kind === "plain") {
+      loot.food = 3; loot.wood = 3; loot.fiber = 2; loot.stone = 2; loot.water = 2;
+      if (dist >= 4) loot.ore = 1;
+    } else if (kind === "rare") {
+      loot.ore = 2; loot.knowledge = 2; loot.remnant = dist >= 4 ? 2 : 1;
+      if (dist >= 5) loot.metal = 1;
+      if (dist >= 6) loot.circuit = 1;
+      if (dist >= 7) loot.starchart = 1;
+      if (dist >= 8) loot.crystal = 1;
+      if (dist >= 9) loot.antimatter = 1;
+    } else {
+      loot.food = 1; loot.stone = 2; loot.ore = 2; loot.remnant = 1;
+      if (dist >= 6) loot.alloy = 1;
+      if (kind === "boss") {
+        loot.knowledge = 3;
+        loot.crystal = dist >= 6 ? 2 : 1;
+        loot.remnant = 3;
+      }
+    }
+    const bidx = bosses.indexOf(i);
+    const enemy = (kind === "combat" || kind === "boss") ? {
+      name: kind === "boss" ? bossNames[bidx] : combatNames[i % combatNames.length],
+      hp: Math.round((kind === "boss" ? 70 : 26) * dist),
+      atk: (kind === "boss" ? 2.4 : 1.15) * dist,
+    } : null;
+    list.push({ id: i, name: rings[dist - 1] + "·" + cols[col], dist, col, kind, loot, enemy });
+  }
+  return list;
+})();
+
