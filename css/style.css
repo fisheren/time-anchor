@@ -325,6 +325,20 @@ button, input, textarea, select { font-family: inherit; }
   font-size: 1rem;
   color: var(--text-strong);
 }
+.camp-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: -0.2rem 0 0.75rem;
+}
+.camp-cat {
+  letter-spacing: 0.06em;
+}
+.camp-cat.on {
+  border-color: rgba(94, 234, 212, 0.55);
+  color: var(--anchor);
+  background: rgba(18, 64, 60, 0.95);
+}
 .flavor {
   margin: 0 0 1rem;
   color: var(--muted);

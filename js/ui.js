@@ -13,6 +13,7 @@ TA.TABS = [
 TA.UI = {
   game: null,
   tab: "river",
+  campCat: "all",
   introStep: 0,
   typed: 0,
   lastFull: 0,
@@ -117,6 +118,12 @@ TA.UI = {
 
   onMainClick(e) {
     const g = this.game;
+    const campCat = e.target.closest("[data-camp-cat]");
+    if (campCat) {
+      this.campCat = campCat.dataset.campCat;
+      this.renderAll(true);
+      return;
+    }
     const gather = e.target.closest("[data-gather]");
     if (gather) {
       g.gather(gather.dataset.gather);
@@ -296,7 +303,7 @@ TA.UI = {
       return d.gather && (!d.gatherUnlock || g.s.techs[d.gatherUnlock]);
     }).join(",");
     const tabs = TA.TABS.map((t) => (t.need && !g.s.techs[t.need] ? "0" : "1")).join("");
-    return [this.tab, visB, visT, visC, visU, visJ, gathers, tabs, g.s.victory ? "v" : "", g.s.techs.timeanchor ? "a" : "", g.canVictory() ? "w" : "", `e${(g.s.elites || []).length}-${g.eliteHousing()}-${g.drawStakeValue()}-${g.s.pendingElite?.id || ""}`, `x${g.s.explore?.trip?.phase || ""}-${g.s.explore?.trip?.zone ?? ""}-${(g.s.explore?.squad || []).join(".")}-${g.s.explore?.selected ?? 0}-${Object.keys(g.s.vehicles || {}).length}-${g.s.explore?.autoRun ? 1 : 0}-${g.s.explore?.autoAdvance ? 1 : 0}`].join("|");
+    return [this.tab, visB, visT, visC, visU, visJ, gathers, tabs, g.s.victory ? "v" : "", g.s.techs.timeanchor ? "a" : "", g.canVictory() ? "w" : "", `e${(g.s.elites || []).length}-${g.eliteHousing()}-${g.drawStakeValue()}-${g.s.pendingElite?.id || ""}`, `x${g.s.explore?.trip?.phase || ""}-${g.s.explore?.trip?.zone ?? ""}-${(g.s.explore?.squad || []).join(".")}-${g.s.explore?.selected ?? 0}-${Object.keys(g.s.vehicles || {}).length}-${g.s.explore?.autoRun ? 1 : 0}-${g.s.explore?.autoAdvance ? 1 : 0}`, `c${this.campCat || "all"}`].join("|");
   },
 
   setDisabled(el, off) {
@@ -545,8 +552,36 @@ TA.UI = {
     for (const [id, d] of gathers) {
       html += `<button type="button" class="btn gather" data-gather="${id}">${TA.icon(id, "ico-gather")}<span class="g-copy"><span class="g-name">${d.gatherName}</span><span class="g-gain">+${TA.fmt(d.gather * bonus)} ${d.name}</span></span></button>`;
     }
-    html += `</div>${this.nextTechsHTML()}<h3 class="section-title">营地</h3><div class="row-list">${this.buildingRows("river")}</div>`;
+    html += `</div>${this.nextTechsHTML()}<h3 class="section-title">营地</h3>${this.campCatHTML()}<div class="row-list">${this.buildingRows("river")}</div>`;
     return html;
+  },
+
+  campCatList() {
+    return [
+      { id: "all", name: "全部" },
+      { id: "生存", name: "生存" },
+      { id: "聚落", name: "聚落" },
+      { id: "工业", name: "工业" },
+      { id: "智库", name: "智库" },
+      { id: "先进", name: "先进" },
+    ];
+  },
+
+  campCatHasBuildings(cat) {
+    const g = this.game;
+    return Object.entries(TA.DATA.buildings).some(([id, b]) => {
+      if (b.tab !== "river" || b.housingElite) return false;
+      if (!g.canSeeBuilding(id)) return false;
+      if (cat === "all") return true;
+      return b.era === cat;
+    });
+  },
+
+  campCatHTML() {
+    const cats = this.campCatList().filter((c) => c.id === "all" || this.campCatHasBuildings(c.id));
+    if (cats.length <= 1) return "";
+    if (!cats.some((c) => c.id === this.campCat)) this.campCat = "all";
+    return `<div class="camp-cats">${cats.map((c) => `<button type="button" class="btn btn-tiny camp-cat${this.campCat === c.id ? " on" : ""}" data-camp-cat="${c.id}">${c.name}</button>`).join("")}</div>`;
   },
 
   nextTechsHTML() {
@@ -829,10 +864,12 @@ TA.UI = {
   buildingRows(tab, housingOnly) {
     const g = this.game;
     let html = "";
+    const campCat = !housingOnly && tab === "river" ? (this.campCat || "all") : "all";
     for (const [id, b] of Object.entries(TA.DATA.buildings)) {
       if (b.tab !== tab && !(housingOnly && (b.housing || b.housingElite) && b.tab === "river")) continue;
       if (housingOnly && !b.housing && !b.housingElite) continue;
       if (b.housingElite && !housingOnly) continue;
+      if (campCat !== "all" && b.era !== campCat) continue;
       if (!housingOnly && tab === "river" && b.housing && this.tab === "river") {
         /* show housing on river too */
       }
