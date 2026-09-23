@@ -139,18 +139,29 @@ TA.Game = class Game {
 
   caps() {
     const caps = {};
-    for (const [id, def] of Object.entries(TA.DATA.resources)) caps[id] = def.cap;
-    caps.fleet = 1e9;
+    for (const [id, def] of Object.entries(TA.DATA.resources)) {
+      if (def.cap == null) caps[id] = Infinity;
+      else caps[id] = def.cap;
+    }
+    caps.fleet = Infinity;
     const fl = this.flags();
     for (const [id, n] of Object.entries(this.s.buildings)) {
       const st = TA.DATA.buildings[id]?.storage;
       if (!st || !n) continue;
-      for (const [k, v] of Object.entries(st)) caps[k] = (caps[k] || 0) + v * n;
+      for (const [k, v] of Object.entries(st)) {
+        if (!isFinite(caps[k])) continue;
+        caps[k] = (caps[k] || 0) + v * n;
+      }
     }
     const all = 1 + (fl.allCap || 0) + (this.s.ropeBonus || 0);
-    for (const k of Object.keys(caps)) caps[k] *= all;
-    if (fl.knowledgeCap) caps.knowledge *= 1 + fl.knowledgeCap;
-    caps.knowledge += (this.s.resources.remnant || 0) * 8;
+    for (const k of Object.keys(caps)) {
+      if (!isFinite(caps[k])) continue;
+      caps[k] *= all;
+    }
+    if (isFinite(caps.knowledge)) {
+      if (fl.knowledgeCap) caps.knowledge *= 1 + fl.knowledgeCap;
+      caps.knowledge += (this.s.resources.remnant || 0) * 8;
+    }
     return caps;
   }
 

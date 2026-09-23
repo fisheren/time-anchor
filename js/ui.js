@@ -492,7 +492,7 @@ TA.UI = {
       const cap = caps[id];
       const rate = p.net[id] || 0;
       const cls = rate > 0.0005 ? "" : rate < -0.0005 ? "neg" : "zero";
-      html += `<div class="res-row">${TA.icon(id, "ico-sm")}<span class="res-name">${names[id]}</span><span class="res-amt">${TA.fmt(amt)}${cap && cap < 1e8 ? ` <span class="res-cap">/ ${TA.fmt(cap)}</span>` : ""}</span><span class="res-rate ${cls}">${TA.fmtRate(rate)}</span></div>`;
+      html += `<div class="res-row">${TA.icon(id, "ico-sm")}<span class="res-name">${names[id]}</span><span class="res-amt">${TA.fmt(amt)}${Number.isFinite(cap) && cap < 1e8 ? ` <span class="res-cap">/ ${TA.fmt(cap)}</span>` : ""}</span><span class="res-rate ${cls}">${TA.fmtRate(rate)}</span></div>`;
     }
     if (g.s.ember > 0) {
       html += `<div class="res-row">${TA.icon("ember", "ico-sm")}<span class="res-name">余烬</span><span class="res-amt">${TA.fmt(g.s.ember, 0)}</span><span class="res-rate zero">回溯残留</span></div>`;
@@ -845,7 +845,7 @@ TA.UI = {
       if (b.production) bits.push(Object.entries(b.production).map(([k, v]) => `${TA.DATA.resources[k]?.name || TA.DATA.specialNames[k] || k} ${TA.fmtRate(v)}`).join("、"));
       if (b.housing) bits.push(`居所 +${b.housing}`);
       if (b.housingElite) bits.push(`专属居所 +${b.housingElite}`);
-      if (b.storage) bits.push("仓储提升");
+      if (b.storage) bits.push(Object.entries(b.storage).map(([k, v]) => `${TA.DATA.resources[k]?.name || k}上限 +${v}`).join("、"));
       html += `<div class="item-row ${ok ? "" : "unaffordable"}">${TA.icon(id, "ico-lg")}<div class="item-body"><div class="item-title">${b.name}<span class="item-count">${n}</span></div>
         <p class="item-desc">${b.desc}${bits.length ? "<br>" + bits.join(" · ") : ""}</p></div>
         <div class="item-cost">${TA.costText(cost, g.s.resources)}</div>
