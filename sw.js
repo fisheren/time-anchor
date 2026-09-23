@@ -1,4 +1,4 @@
-const VERSION = "2026-09-23-2";
+const VERSION = "2026-09-23-3";
 const CACHE = "time-anchor-" + VERSION;
 
 const PRECACHE = [

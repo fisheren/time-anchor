@@ -559,21 +559,26 @@ TA.UI = {
   campCatList() {
     return [
       { id: "all", name: "全部" },
-      { id: "生存", name: "生存" },
-      { id: "聚落", name: "聚落" },
-      { id: "工业", name: "工业" },
-      { id: "智库", name: "智库" },
-      { id: "先进", name: "先进" },
+      { id: "house", name: "房屋" },
+      { id: "store", name: "仓储" },
+      { id: "prod", name: "生产" },
     ];
+  },
+
+  campKind(b) {
+    if (b.housing || b.housingElite) return "house";
+    if (b.storage && !b.production) return "store";
+    if (b.production) return "prod";
+    return "";
   },
 
   campCatHasBuildings(cat) {
     const g = this.game;
     return Object.entries(TA.DATA.buildings).some(([id, b]) => {
-      if (b.tab !== "river" || b.housingElite) return false;
+      if (b.tab !== "river") return false;
       if (!g.canSeeBuilding(id)) return false;
-      if (cat === "all") return true;
-      return b.era === cat;
+      if (cat === "all") return !b.housingElite;
+      return this.campKind(b) === cat;
     });
   },
 
@@ -868,8 +873,8 @@ TA.UI = {
     for (const [id, b] of Object.entries(TA.DATA.buildings)) {
       if (b.tab !== tab && !(housingOnly && (b.housing || b.housingElite) && b.tab === "river")) continue;
       if (housingOnly && !b.housing && !b.housingElite) continue;
-      if (b.housingElite && !housingOnly) continue;
-      if (campCat !== "all" && b.era !== campCat) continue;
+      if (b.housingElite && !housingOnly && campCat !== "house") continue;
+      if (campCat !== "all" && this.campKind(b) !== campCat) continue;
       if (!housingOnly && tab === "river" && b.housing && this.tab === "river") {
         /* show housing on river too */
       }
