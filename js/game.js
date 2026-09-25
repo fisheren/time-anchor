@@ -184,12 +184,15 @@ TA.Game = class Game {
 
     const seasonize = (res, v) => {
       if (res === "food") return v * season.food * (1 + (fl.foodProd || 0));
+      if (res === "meal") return v * season.food * (1 + (fl.mealProd || 0));
+      if (res === "meat") return v * season.food * (1 + (fl.foodProd || 0));
       if (res === "water") return v * season.water * (1 + (fl.waterProd || 0));
       if (res === "wood") return v * season.wood * (1 + (fl.woodStoneProd || 0));
       if (res === "stone") return v * (1 + (fl.woodStoneProd || 0));
       if (res === "energy") return v * season.energy * (1 + (fl.energyProd || 0));
       if (res === "metal") return v * (1 + (fl.metalProd || 0));
       if (res === "ore") return v * (1 + (fl.oreProd || 0));
+      if (res === "cloth") return v * (1 + (fl.clothProd || 0));
       if (res === "knowledge") return v * (1 + (fl.knowledgeProd || 0));
       if (res === "fleet") return v * (1 + (fl.fleetBonus || 0));
       if (res === "charge") return v * (1 + (fl.chargeBonus || 0));
@@ -245,11 +248,14 @@ TA.Game = class Game {
       }
     }
 
-    const eat = (this.s.pop + this.eliteEat()) * TA.FOOD_PER_POP;
-    add(cons, "food", eat);
+    const eatNeed = (this.s.pop + this.eliteEat()) * TA.FOOD_PER_POP;
+    const mealHave = this.s.resources.meal || 0;
+    const mealRate = mealHave > 0.05 ? eatNeed * 0.62 : 0;
+    add(cons, "meal", mealRate);
+    add(cons, "food", Math.max(0, eatNeed - mealRate * 1.3));
 
     const net = {};
-    const keys = new Set([...Object.keys(prod), ...Object.keys(cons), "food"]);
+    const keys = new Set([...Object.keys(prod), ...Object.keys(cons), "food", "meal"]);
     for (const k of keys) net[k] = (prod[k] || 0) - (cons[k] || 0);
 
     let conceal = 0.06 + (fl.concealRegen || 0) * 0.12;
@@ -266,8 +272,9 @@ TA.Game = class Game {
     net._conceal = conceal - drain;
     net._happy = (fl.happiness || 0) * 0.015;
     if (this.s.pop + (this.s.elites || []).length > 0) {
-      const foodNet = net.food || 0;
-      if (foodNet >= 0 && (this.s.resources.food || 0) > 1) net._happy += 0.08;
+      const filled = (this.s.resources.food || 0) + (this.s.resources.meal || 0) * 1.3;
+      const foodishNet = (net.food || 0) + (net.meal || 0) * 1.3;
+      if (foodishNet >= -0.002 && filled > 1) net._happy += 0.08 + ((this.s.resources.meal || 0) > 0.5 ? 0.05 : 0);
       else net._happy -= 0.35;
     }
 
@@ -294,6 +301,7 @@ TA.Game = class Game {
     if ((this.s.resources[id] || 0) > 0.01) return true;
     if ((this.s.seenMax[id] || 0) > 0) return true;
     if (def.gather && (!def.gatherUnlock || this.s.techs[def.gatherUnlock])) return true;
+    if (def.seeUnlock && this.s.techs[def.seeUnlock]) return true;
     return false;
   }
 
@@ -1165,7 +1173,7 @@ TA.Game = class Game {
       this.log("warn", `${gone.name}失去专属居所，离开营地。`);
     }
     this._arrive = (this._arrive || 0);
-    if (this.s.pop < house && this.s.happiness > 28 && (this.s.resources.food || 0) > 8) {
+    if (this.s.pop < house && this.s.happiness > 28 && ((this.s.resources.food || 0) > 8 || (this.s.resources.meal || 0) > 5)) {
       this._arrive += dt * (0.06 + this.s.happiness / 1200);
       if (this._arrive >= 1) {
         this._arrive = 0;
@@ -1174,7 +1182,7 @@ TA.Game = class Game {
         else if (this.s.pop % 5 === 0) this.log("event", `又一名居民迁入。现有 ${this.s.pop} 名居民。`);
       }
     }
-    if ((this.s.resources.food || 0) <= 0.05 && (this.s.pop > 0 || (this.s.elites || []).length > 0)) {
+    if ((this.s.resources.food || 0) <= 0.05 && (this.s.resources.meal || 0) <= 0.05 && (this.s.pop > 0 || (this.s.elites || []).length > 0)) {
       this._starve = (this._starve || 0) + dt;
       if (this._starve > 8) {
         this._starve = 0;

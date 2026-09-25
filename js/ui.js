@@ -559,25 +559,29 @@ TA.UI = {
   campCatList() {
     return [
       { id: "all", name: "全部" },
-      { id: "house", name: "房屋" },
+      { id: "forest", name: "林业" },
+      { id: "mine", name: "矿业" },
+      { id: "smelt", name: "熔炼" },
+      { id: "farm", name: "农业" },
+      { id: "stock", name: "畜牧" },
+      { id: "cook", name: "烹饪" },
+      { id: "weave", name: "纺织" },
       { id: "store", name: "仓储" },
-      { id: "prod", name: "生产" },
+      { id: "industry", name: "工业" },
     ];
   },
 
   campKind(b) {
-    if (b.housing || b.housingElite) return "house";
-    if (b.storage && !b.production) return "store";
-    if (b.production) return "prod";
-    return "";
+    return b.camp || "";
   },
 
   campCatHasBuildings(cat) {
     const g = this.game;
     return Object.entries(TA.DATA.buildings).some(([id, b]) => {
       if (b.tab !== "river") return false;
+      if (b.housing || b.housingElite) return false;
       if (!g.canSeeBuilding(id)) return false;
-      if (cat === "all") return !b.housingElite;
+      if (cat === "all") return true;
       return this.campKind(b) === cat;
     });
   },
@@ -873,11 +877,8 @@ TA.UI = {
     for (const [id, b] of Object.entries(TA.DATA.buildings)) {
       if (b.tab !== tab && !(housingOnly && (b.housing || b.housingElite) && b.tab === "river")) continue;
       if (housingOnly && !b.housing && !b.housingElite) continue;
-      if (b.housingElite && !housingOnly && campCat !== "house") continue;
+      if (!housingOnly && tab === "river" && (b.housing || b.housingElite)) continue;
       if (campCat !== "all" && this.campKind(b) !== campCat) continue;
-      if (!housingOnly && tab === "river" && b.housing && this.tab === "river") {
-        /* show housing on river too */
-      }
       if (housingOnly && this.tab === "village" && !b.housing && !b.housingElite) continue;
       if (!g.canSeeBuilding(id)) continue;
       const n = g.s.buildings[id] || 0;
@@ -885,6 +886,7 @@ TA.UI = {
       const ok = TA.canAfford(g.s.resources, cost);
       const bits = [];
       if (b.production) bits.push(Object.entries(b.production).map(([k, v]) => `${TA.DATA.resources[k]?.name || TA.DATA.specialNames[k] || k} ${TA.fmtRate(v)}`).join("、"));
+      if (b.consumption) bits.push("消耗 " + Object.entries(b.consumption).map(([k, v]) => `${TA.DATA.resources[k]?.name || k} ${TA.fmtRate(v)}`).join("、"));
       if (b.housing) bits.push(`居所 +${b.housing}`);
       if (b.housingElite) bits.push(`专属居所 +${b.housingElite}`);
       if (b.storage) bits.push(Object.entries(b.storage).map(([k, v]) => `${TA.DATA.resources[k]?.name || k}上限 +${v}`).join("、"));

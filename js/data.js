@@ -20,7 +20,11 @@ TA.DATA = {
   resources: {
     water: { name: "清水", cat: "生存", order: 1, cap: 80, gather: 1.2, gatherName: "汲水", gatherDesc: "从河边捧起陌生却能饮用的清水。" },
     food: { name: "食物", cat: "生存", order: 2, cap: 80, gather: 1, gatherName: "采集", gatherDesc: "浆果、块茎、以及一些不该询问名字的菌类。" },
+    meal: { name: "熟食", cat: "生存", order: 2.2, cap: 50, seeUnlock: "cookery" },
+    meat: { name: "兽肉", cat: "生存", order: 2.4, cap: 40, seeUnlock: "husbandry" },
     fiber: { name: "纤维", cat: "生存", order: 3, cap: 60, gather: 1, gatherName: "剥麻", gatherDesc: "河边韧草，可以编成绳索、可以铺成棚顶。" },
+    hide: { name: "皮革", cat: "生存", order: 3.2, cap: 40, seeUnlock: "husbandry" },
+    cloth: { name: "布匹", cat: "生存", order: 3.4, cap: 40, seeUnlock: "weaving" },
     wood: { name: "原木", cat: "生存", order: 4, cap: 60, gather: 0.9, gatherName: "拾柴", gatherDesc: "倒木很多。这片林子从不被智子丈量。" },
     stone: { name: "石料", cat: "生存", order: 5, cap: 50, gather: 0.7, gatherName: "采石", gatherDesc: "河边卵石，敲开后有铁锈气味。" },
     ore: { name: "矿石", cat: "工业", order: 6, cap: 40 },
@@ -30,7 +34,7 @@ TA.DATA = {
     brick: { name: "砖石", cat: "工业", order: 10, cap: 50 },
     alloy: { name: "合金", cat: "工业", order: 11, cap: 25 },
     fuel: { name: "燃料", cat: "工业", order: 12, cap: 30 },
-    knowledge: { name: "知识", cat: "智库", order: 13, cap: null, gather: 0.6, gatherName: "唤起残档", gatherDesc: "芯片里有人类的全部知识。你只能一次捞起一页残档。", gatherUnlock: "fire" },
+    knowledge: { name: "知识", cat: "智库", order: 13, cap: 120, gather: 0.6, gatherName: "唤起残档", gatherDesc: "芯片里有人类的全部知识。你只能一次捞起一页残档。", gatherUnlock: "fire" },
     remnant: { name: "残卷", cat: "智库", order: 14, cap: 40 },
     circuit: { name: "电路", cat: "先进", order: 15, cap: 20 },
     starchart: { name: "星图", cat: "先进", order: 16, cap: 30 },
@@ -57,6 +61,28 @@ TA.DATA = {
       cost: { wood: 16, fiber: 12 }, ratio: 1.14,
       production: { fiber: 0.22 }, storage: { fiber: 50 },
     },
+    loom: {
+      name: "织机", tab: "river", era: "聚落",
+      desc: "经线与纬线。纤维第一次承认自己可以成为衣服。",
+      cost: { wood: 36, fiber: 24, stone: 8 }, ratio: 1.15,
+      require: { tech: "weaving" },
+      production: { cloth: 0.07 }, consumption: { fiber: 0.16, hide: 0.03 }, storage: { cloth: 25 },
+    },
+    clothShed: {
+      name: "布仓", tab: "river", era: "聚落",
+      desc: "布匹怕潮、怕虫。离地、封口、记账。",
+      cost: { wood: 32, plank: 8, fiber: 16 }, ratio: 1.15,
+      require: { tech: "weaving" },
+      storage: { cloth: 80, fiber: 40, hide: 20 },
+    },
+    tailor: {
+      name: "缝衣间", tab: "river", era: "聚落",
+      desc: "把布匹变成可以穿的形状。居民第一次感觉自己被文明盖住。",
+      cost: { wood: 28, cloth: 6, fiber: 18 }, ratio: 1.16,
+      require: { tech: "weaving" },
+      consumption: { cloth: 0.04 },
+      flags: { happiness: 6 },
+    },
     campfire: {
       name: "火塘", tab: "river", era: "生存",
       desc: "第一堆火焰。夜晚，对岸那些眼睛不再靠近。",
@@ -65,12 +91,48 @@ TA.DATA = {
       production: { food: 0.08 },
       flags: { happiness: 4 },
     },
+    kitchen: {
+      name: "灶台", tab: "river", era: "生存",
+      desc: "把生食按住，让火焰完成其余的工作。熟食让人愿意留下来。",
+      cost: { wood: 30, stone: 18, fiber: 12 }, ratio: 1.16,
+      require: { tech: "cookery" },
+      production: { meal: 0.24 }, consumption: { food: 0.16, meat: 0.05, water: 0.08 }, storage: { meal: 40 },
+      flags: { happiness: 5 },
+    },
+    smokehouse: {
+      name: "熏棚", tab: "river", era: "聚落",
+      desc: "烟把兽肉变成可以过冬的东西。霜降季因此短了一截。",
+      cost: { wood: 34, fiber: 14, stone: 10 }, ratio: 1.16,
+      require: { tech: "cookery" },
+      production: { meal: 0.14, food: 0.03 }, consumption: { meat: 0.1, wood: 0.05 }, storage: { meal: 50, meat: 20 },
+    },
     lumber: {
       name: "林场", tab: "river", era: "聚落",
       desc: "选择倒木。不要与整片森林为敌。",
       cost: { wood: 28, fiber: 16, stone: 8 }, ratio: 1.15,
       require: { tech: "construction" },
       production: { wood: 0.28 }, storage: { wood: 70, plank: 20 },
+    },
+    sawmill: {
+      name: "锯木棚", tab: "river", era: "聚落",
+      desc: "把原木剖开。平面从此可以叠放、可以钉合。",
+      cost: { wood: 40, stone: 16, fiber: 12 }, ratio: 1.15,
+      require: { tech: "forestry" },
+      production: { plank: 0.05 }, consumption: { wood: 0.22 }, storage: { plank: 35 },
+    },
+    charcoalPit: {
+      name: "炭窑", tab: "river", era: "聚落",
+      desc: "让原木在缺氧里变成更听话的火焰。",
+      cost: { wood: 36, stone: 20, fiber: 10 }, ratio: 1.16,
+      require: { tech: "forestry" },
+      production: { energy: 0.14 }, consumption: { wood: 0.16 },
+    },
+    nursery: {
+      name: "苗圃", tab: "river", era: "聚落",
+      desc: "先种下明天的原木。林场从此不必只向倒木伸手。",
+      cost: { wood: 24, water: 30, fiber: 18 }, ratio: 1.15,
+      require: { tech: "forestry" },
+      production: { wood: 0.18, fiber: 0.04 }, consumption: { water: 0.05 }, storage: { wood: 40 },
     },
     quarry: {
       name: "采石场", tab: "river", era: "聚落",
@@ -100,6 +162,42 @@ TA.DATA = {
       require: { tech: "agriculture" },
       production: { food: 1.05 }, consumption: { water: 0.18 }, storage: { food: 80 },
     },
+    orchard: {
+      name: "果园", tab: "river", era: "聚落",
+      desc: "把浆果固定在营地能看见的距离里。",
+      cost: { wood: 36, fiber: 24, water: 40, food: 20 }, ratio: 1.15,
+      require: { tech: "agriculture" },
+      production: { food: 0.55, fiber: 0.04 }, consumption: { water: 0.1 }, storage: { food: 50 },
+    },
+    well: {
+      name: "水井", tab: "river", era: "聚落",
+      desc: "向下要清水，而不是只向河流伸手。",
+      cost: { stone: 40, wood: 24, fiber: 16 }, ratio: 1.15,
+      require: { tech: "irrigation" },
+      production: { water: 0.55 }, storage: { water: 80 },
+    },
+    pen: {
+      name: "畜栏", tab: "river", era: "聚落",
+      desc: "把会跑的食物围住。兽肉与皮革开始按节奏出现。",
+      cost: { wood: 40, fiber: 28, food: 20 }, ratio: 1.16,
+      require: { tech: "husbandry" },
+      production: { meat: 0.22, hide: 0.07 }, consumption: { food: 0.14 },
+      flags: { happiness: 1 },
+    },
+    pasture: {
+      name: "牧地", tab: "river", era: "聚落",
+      desc: "清水换成兽肉、纤维与皮革。河岸第一次听见牲畜的叫声。",
+      cost: { wood: 32, fiber: 22, water: 40 }, ratio: 1.15,
+      require: { tech: "husbandry" },
+      production: { meat: 0.12, fiber: 0.1, hide: 0.03 }, consumption: { water: 0.1 },
+    },
+    tannery: {
+      name: "鞣皮棚", tab: "river", era: "聚落",
+      desc: "皮革怕腐烂。清水、荫凉、以及足够的耐心。",
+      cost: { wood: 28, fiber: 16, stone: 12 }, ratio: 1.15,
+      require: { tech: "husbandry" },
+      storage: { hide: 70, meat: 20 },
+    },
     silo: {
       name: "粮仓", tab: "river", era: "聚落",
       desc: "霜降季的恐惧有了形状：空仓。",
@@ -112,7 +210,70 @@ TA.DATA = {
       desc: "分类、堆叠、记账。文明从不再把物品丢弃在地面开始。",
       cost: { wood: 60, stone: 40, plank: 12 }, ratio: 1.17,
       require: { tech: "construction" },
-      storage: { water: 80, wood: 80, stone: 80, ore: 40, metal: 20, fiber: 40, plank: 50, brick: 50 },
+      storage: { water: 80, wood: 80, stone: 80, ore: 40, metal: 20, fiber: 40, plank: 50, brick: 50, meat: 30, hide: 30, cloth: 30, meal: 40 },
+    },
+    cellar: {
+      name: "地窖", tab: "river", era: "聚落",
+      desc: "把熟食、兽肉与块茎送进凉爽的地下。霜降季因此可以谈判。",
+      cost: { wood: 40, stone: 30, fiber: 16 }, ratio: 1.16,
+      require: { tech: "cookery" },
+      storage: { food: 120, meal: 80, meat: 60 },
+    },
+    stockyard: {
+      name: "堆料场", tab: "river", era: "聚落",
+      desc: "石料、矿石、金属与原木分堆。地面不再是仓库。",
+      cost: { wood: 50, stone: 30, plank: 10 }, ratio: 1.16,
+      require: { tech: "tools" },
+      storage: { stone: 90, ore: 70, metal: 40, wood: 50 },
+    },
+    remnantShelf: {
+      name: "残卷架", tab: "river", era: "智库",
+      desc: "把可以触摸的记忆立起来。纸页怕潮，架子不怕。",
+      cost: { plank: 18, wood: 22, fiber: 14 }, ratio: 1.15,
+      require: { tech: "writing" },
+      storage: { remnant: 45 },
+    },
+    chartCase: {
+      name: "星图柜", tab: "river", era: "智库",
+      desc: "星图必须平放。折叠会让坐标说谎。",
+      cost: { plank: 24, metal: 10, remnant: 1 }, ratio: 1.16,
+      require: { tech: "mathematics" },
+      storage: { starchart: 24 },
+    },
+    batteryBank: {
+      name: "蓄电池组", tab: "river", era: "工业",
+      desc: "把白天的电流关进夜里。",
+      cost: { metal: 28, brick: 16, energy: 24 }, ratio: 1.16,
+      require: { tech: "electricity" },
+      storage: { energy: 200 },
+    },
+    alloyRack: {
+      name: "合金货架", tab: "river", era: "工业",
+      desc: "合金比铁料更值得垫高。锈迹会毁掉归乡的龙骨。",
+      cost: { brick: 22, metal: 18, alloy: 4 }, ratio: 1.16,
+      require: { tech: "steel" },
+      storage: { alloy: 55, metal: 15 },
+    },
+    fuelTank: {
+      name: "燃料罐", tab: "river", era: "工业",
+      desc: "密封、接地、远离火塘。燃料记得自己想变成火焰。",
+      cost: { metal: 24, brick: 20, stone: 18 }, ratio: 1.16,
+      require: { tech: "chemistry" },
+      storage: { fuel: 80 },
+    },
+    circuitCase: {
+      name: "元件柜", tab: "river", era: "先进",
+      desc: "电路怕灰尘。柜子比桌面更像实验室。",
+      cost: { metal: 18, alloy: 8, plank: 14 }, ratio: 1.16,
+      require: { tech: "electronics" },
+      storage: { circuit: 30 },
+    },
+    hazardVault: {
+      name: "约束窖", tab: "river", era: "先进",
+      desc: "反物质与时空结晶不能和木板住在同一间屋子里。",
+      cost: { alloy: 22, circuit: 10, brick: 36, energy: 50 }, ratio: 1.18,
+      require: { tech: "nuclear" },
+      storage: { antimatter: 8, crystal: 6 },
     },
     lumberShed: {
       name: "木料棚", tab: "river", era: "聚落",
@@ -133,7 +294,7 @@ TA.DATA = {
       desc: "用藤条和卵石给芯片接出第一根「外设」。知识开始外溢。",
       cost: { wood: 28, stone: 12, fiber: 16 }, ratio: 1.15,
       require: { tech: "fire" },
-      production: { knowledge: 0.18 },
+      production: { knowledge: 0.18 }, storage: { knowledge: 220 },
     },
     mine: {
       name: "矿坑", tab: "river", era: "工业",
@@ -144,10 +305,17 @@ TA.DATA = {
     },
     oreBin: {
       name: "矿石堆场", tab: "river", era: "工业",
-      desc: "围堰、排水、露天堆放。矿石不怕雨，怕被河水冲走。",
+      desc: "矿石按块码放。潮湿的矿会结块，也会骗人。",
       cost: { wood: 36, stone: 28, plank: 8 }, ratio: 1.16,
       require: { tech: "mining" },
       storage: { ore: 100, stone: 20 },
+    },
+    deepShaft: {
+      name: "竖井", tab: "river", era: "工业",
+      desc: "向下比向岸边走得更远。原木用来撑住不想塌下来的岩层。",
+      cost: { wood: 80, stone: 50, plank: 16 }, ratio: 1.16,
+      require: { tech: "mining" },
+      production: { ore: 0.28, stone: 0.06 }, consumption: { wood: 0.05 }, storage: { ore: 40 },
     },
     furnace: {
       name: "冶炼炉", tab: "river", era: "工业",
@@ -156,12 +324,19 @@ TA.DATA = {
       require: { tech: "smelting" },
       production: { metal: 0.07 }, consumption: { ore: 0.11, wood: 0.04 }, storage: { metal: 25 },
     },
-    ingotShed: {
-      name: "锭料棚", tab: "river", era: "工业",
-      desc: "金属怕锈。干燥、垫高、通风。锭料不能堆在露天。",
-      cost: { brick: 16, wood: 28, metal: 6 }, ratio: 1.16,
+    kiln: {
+      name: "砖窑", tab: "river", era: "工业",
+      desc: "石料、清水、火焰。砖石从此可以按人的尺寸生长。",
+      cost: { stone: 50, wood: 28, fiber: 12 }, ratio: 1.16,
       require: { tech: "smelting" },
-      storage: { metal: 70, ore: 20 },
+      production: { brick: 0.055 }, consumption: { stone: 0.18, water: 0.04, wood: 0.05 }, storage: { brick: 40 },
+    },
+    bloomery: {
+      name: "锻炉", tab: "river", era: "工业",
+      desc: "比冶炼炉更早、更吵。铁料在锤声里学会自己的形状。",
+      cost: { stone: 55, wood: 30, ore: 12 }, ratio: 1.16,
+      require: { tech: "smelting" },
+      production: { metal: 0.09 }, consumption: { ore: 0.14, wood: 0.08 }, storage: { metal: 20 },
     },
     brickYard: {
       name: "砖垛场", tab: "river", era: "工业",
@@ -170,6 +345,13 @@ TA.DATA = {
       require: { tech: "smelting" },
       storage: { brick: 90, stone: 40 },
     },
+    ingotShed: {
+      name: "锭料棚", tab: "river", era: "工业",
+      desc: "金属怕水。垫高、盖顶、错缝码放。",
+      cost: { brick: 16, wood: 28, metal: 6 }, ratio: 1.16,
+      require: { tech: "smelting" },
+      storage: { metal: 70, ore: 20 },
+    },
     mill: {
       name: "水车", tab: "river", era: "工业",
       desc: "河水开始推动水车。",
@@ -177,20 +359,20 @@ TA.DATA = {
       require: { tech: "mechanics" },
       production: { energy: 0.35 }, storage: { energy: 50 },
     },
+    pump: {
+      name: "水泵", tab: "river", era: "工业",
+      desc: "齿轮把河水抬起来。能源换成清水。",
+      cost: { metal: 18, plank: 16, stone: 24 }, ratio: 1.15,
+      require: { tech: "mechanics" },
+      production: { water: 0.4 }, consumption: { energy: 0.08 },
+    },
     academy: {
       name: "学堂", tab: "river", era: "智库",
       desc: "教居民辨认地球文字。他们把「三体」念成一种鸟鸣。",
       cost: { plank: 28, stone: 60, knowledge: 80, brick: 10 }, ratio: 1.16,
       require: { tech: "writing" },
-      production: { knowledge: 0.32 }, storage: { remnant: 15 },
+      production: { knowledge: 0.32 }, storage: { knowledge: 400 },
       flags: { scholarBonus: 0.08 },
-    },
-    remnantShelf: {
-      name: "残卷架", tab: "river", era: "智库",
-      desc: "木板做成格子。残卷不再堆在潮湿的地面。",
-      cost: { plank: 18, wood: 22, fiber: 14 }, ratio: 1.15,
-      require: { tech: "writing" },
-      storage: { remnant: 45 },
     },
     longhouse: {
       name: "长屋", tab: "river", era: "聚落",
@@ -213,15 +395,8 @@ TA.DATA = {
       desc: "你终于看见太阳系。地球是一粒将要熄灭的尘埃。",
       cost: { plank: 40, metal: 20, knowledge: 200, brick: 30 }, ratio: 1.16,
       require: { tech: "mathematics" },
-      production: { knowledge: 0.22, starchart: 0.004 }, storage: { starchart: 8 },
+      production: { knowledge: 0.22, starchart: 0.004 }, storage: { knowledge: 600, starchart: 8 },
       flags: { concealment: -0.4 },
-    },
-    chartCase: {
-      name: "星图柜", tab: "river", era: "智库",
-      desc: "抽屉、压条、防潮。星图怕折痕，也怕河风。",
-      cost: { plank: 24, metal: 10, remnant: 1 }, ratio: 1.16,
-      require: { tech: "mathematics" },
-      storage: { starchart: 24 },
     },
     dam: {
       name: "河坝电站", tab: "river", era: "工业",
@@ -230,40 +405,19 @@ TA.DATA = {
       require: { tech: "electricity" },
       production: { energy: 1.15 }, storage: { energy: 120 },
     },
-    batteryBank: {
-      name: "蓄电池组", tab: "river", era: "工业",
-      desc: "把河流发出的电关进铅与酸里。停电时营地仍有光。",
-      cost: { metal: 28, brick: 16, energy: 24 }, ratio: 1.16,
-      require: { tech: "electricity" },
-      storage: { energy: 200 },
-    },
     lab: {
       name: "实验室", tab: "river", era: "智库",
       desc: "无菌是一种奢侈。你用沸水与金属逼近无菌。",
       cost: { metal: 40, brick: 35, knowledge: 400, energy: 40 }, ratio: 1.16,
       require: { tech: "electricity" },
-      production: { knowledge: 0.55 }, storage: { remnant: 20, circuit: 8 },
+      production: { knowledge: 0.55 }, storage: { knowledge: 900 },
     },
     foundry: {
       name: "合金厂", tab: "river", era: "工业",
       desc: "比铁料更硬的材料。归乡的龙骨需要这种材料。",
       cost: { metal: 50, brick: 40, energy: 30, stone: 60 }, ratio: 1.17,
       require: { tech: "steel" },
-      production: { alloy: 0.05 }, consumption: { metal: 0.08, energy: 0.12 }, storage: { alloy: 20, metal: 20 },
-    },
-    alloyRack: {
-      name: "合金货架", tab: "river", era: "工业",
-      desc: "编号、分垛、防潮。合金比铁料更不能生锈。",
-      cost: { brick: 22, metal: 18, alloy: 4 }, ratio: 1.16,
-      require: { tech: "steel" },
-      storage: { alloy: 55, metal: 15 },
-    },
-    fuelTank: {
-      name: "燃料罐", tab: "river", era: "工业",
-      desc: "密封、接地、远离火塘。燃料不是可以堆在棚屋里的液体。",
-      cost: { metal: 24, brick: 20, stone: 18 }, ratio: 1.16,
-      require: { tech: "chemistry" },
-      storage: { fuel: 80 },
+      production: { alloy: 0.05 }, consumption: { metal: 0.08, energy: 0.12 }, storage: { alloy: 20 },
     },
     solar: {
       name: "光伏阵", tab: "river", era: "工业",
@@ -278,15 +432,7 @@ TA.DATA = {
       cost: { alloy: 20, brick: 50, metal: 40, circuit: 4 }, ratio: 1.18,
       require: { tech: "electronics" },
       production: { circuit: 0.012 }, consumption: { alloy: 0.02, energy: 0.2 },
-      storage: { circuit: 12 },
       flags: { craftBonus: 0.1 },
-    },
-    circuitCase: {
-      name: "元件柜", tab: "river", era: "先进",
-      desc: "干燥、避尘、接地。电路板不能和砖石住在同一间棚里。",
-      cost: { metal: 18, alloy: 8, plank: 14 }, ratio: 1.16,
-      require: { tech: "electronics" },
-      storage: { circuit: 30 },
     },
     clonevat: {
       name: "培育舱", tab: "river", era: "先进",
@@ -311,20 +457,12 @@ TA.DATA = {
       production: { energy: 3.2, antimatter: 0.001 }, consumption: { ore: 0.15 }, storage: { energy: 200, antimatter: 3 },
       flags: { concealment: -1.2 },
     },
-    hazardVault: {
-      name: "约束窖", tab: "river", era: "先进",
-      desc: "磁场、混凝土、锁。反物质与结晶不能靠堆高来存放。",
-      cost: { alloy: 22, circuit: 10, brick: 36, energy: 50 }, ratio: 1.18,
-      require: { tech: "nuclear" },
-      storage: { antimatter: 8, crystal: 6 },
-    },
     pad: {
       name: "发射坪", tab: "space", era: "星空",
       desc: "第一枚箭矢指向地球曾经的方向。烟柱会说话。",
       cost: { alloy: 30, fuel: 20, circuit: 8, brick: 40 }, ratio: 1.18,
       require: { tech: "rocketry" },
       production: { fleet: 0.06, starchart: 0.01 }, consumption: { fuel: 0.05, energy: 0.3 },
-      storage: { fuel: 35 },
       flags: { concealment: -2.2 },
     },
     dock: {
@@ -333,7 +471,6 @@ TA.DATA = {
       cost: { alloy: 50, circuit: 20, fuel: 30, starchart: 8 }, ratio: 1.2,
       require: { tech: "orbital" },
       production: { fleet: 0.22 }, consumption: { energy: 0.8, alloy: 0.03 },
-      storage: { fuel: 20, alloy: 12 },
       flags: { concealment: -1.5 },
     },
     jammer: {
@@ -349,7 +486,6 @@ TA.DATA = {
       cost: { alloy: 20, circuit: 10, crystal: 1, energy: 100 }, ratio: 1.2,
       require: { tech: "timeanchor" },
       production: { charge: 0.035, crystal: 0.0008 }, consumption: { energy: 0.4 },
-      storage: { crystal: 4 },
     },
     drive: {
       name: "曲率环", tab: "space", era: "归乡",
@@ -373,6 +509,12 @@ TA.DATA = {
       desc: "只砍已标记的树木。居民比你更怕林子里的生物。",
       production: { wood: 0.14 },
       require: { tech: "construction" },
+    },
+    sawyer: {
+      name: "锯木工",
+      desc: "把倒木变成可以叠放的形状。",
+      production: { wood: 0.08, plank: 0.015 },
+      require: { tech: "forestry" },
     },
     mason: {
       name: "石工",
@@ -398,6 +540,24 @@ TA.DATA = {
       production: { metal: 0.035, energy: 0.06 },
       require: { tech: "smelting" },
     },
+    herder: {
+      name: "牧人",
+      desc: "跟着牲畜走，也让牲畜跟着栅栏走。",
+      production: { meat: 0.08, hide: 0.03 },
+      require: { tech: "husbandry" },
+    },
+    cook: {
+      name: "厨子",
+      desc: "把生的变成可以分享的。火塘因此有了纪律。",
+      production: { meal: 0.05 },
+      require: { tech: "cookery" },
+    },
+    weaver: {
+      name: "织工",
+      desc: "经线不会自己交叉。双手必须记得每一次穿过。",
+      production: { cloth: 0.03 },
+      require: { tech: "weaving" },
+    },
     technician: {
       name: "技术员",
       desc: "把地球的电路图翻译成这颗星球能懂的语言。",
@@ -418,7 +578,14 @@ TA.DATA = {
       name: "用火", era: "生存", order: 1,
       desc: "湿木、火花、以及义体里残存的点火程序。夜晚被推开一寸。",
       cost: { wood: 15, fiber: 8, food: 8 },
-      unlocks: "火塘、残档接口。知识开始可被唤起。",
+      unlocks: "火塘、残档接口、烹饪。知识开始可被唤起。",
+    },
+    cookery: {
+      name: "烹饪", era: "生存", order: 1.5,
+      desc: "火焰不只用来驱赶黑暗。它开始改变食物的名字。",
+      cost: { knowledge: 28, wood: 18, food: 12 },
+      require: { tech: "fire" },
+      unlocks: "灶台、熏棚、地窖、厨子、熟食。",
     },
     survival: {
       name: "生存学", era: "生存", order: 2,
@@ -433,42 +600,63 @@ TA.DATA = {
       desc: "横梁、立柱、斜撑。棚屋不再只是「靠在一起的木头」。",
       cost: { knowledge: 35, wood: 30, fiber: 20 },
       require: { tech: "fire" },
-      unlocks: "棚屋、林场、仓储、木料棚、专属厢房、招募抽签、探索。",
+      unlocks: "棚屋、林场、仓储、专属厢房、招募抽签、探索、育林。",
+    },
+    forestry: {
+      name: "育林", era: "聚落", order: 3.5,
+      desc: "倒木会用尽。先让树木按你的节奏生长。",
+      cost: { knowledge: 55, wood: 40, fiber: 16 },
+      require: { tech: "construction" },
+      unlocks: "锯木棚、炭窑、苗圃、锯木工。",
     },
     tools: {
       name: "工具", era: "生存", order: 4,
       desc: "刃口改变物种的命运。你把这句话讲给居民听，他们把石头磨得更好。",
       cost: { knowledge: 50, wood: 25, stone: 20 },
       require: { tech: "construction" },
-      unlocks: "采石场、石工、板车。",
+      unlocks: "采石场、石工、板车、纺织、堆料场。",
+    },
+    weaving: {
+      name: "纺织", era: "聚落", order: 4.5,
+      desc: "纤维交叉之后，寒冷开始退让。",
+      cost: { knowledge: 80, fiber: 30, wood: 20 },
+      require: { tech: "tools" },
+      unlocks: "织机、布仓、缝衣间、织工、布匹。",
     },
     agriculture: {
       name: "农耕", era: "聚落", order: 5,
       desc: "不要跟随浆果，要让浆果跟随你。",
       cost: { knowledge: 70, food: 40, water: 40, fiber: 25 },
       require: { tech: "survival" },
-      unlocks: "河滩田、粮仓。",
+      unlocks: "河滩田、粮仓、果园、畜牧。",
+    },
+    husbandry: {
+      name: "畜牧", era: "聚落", order: 5.5,
+      desc: "不要只跟随猎物。让猎物在栅栏里繁殖。",
+      cost: { knowledge: 90, food: 35, water: 30 },
+      require: { tech: "agriculture" },
+      unlocks: "畜栏、牧地、鞣皮棚、牧人、兽肉、皮革。",
     },
     mining: {
       name: "采矿", era: "聚落", order: 6,
       desc: "地球的工业革命在一处河岸被重新点燃。",
       cost: { knowledge: 120, stone: 40, wood: 40 },
       require: { tech: "tools" },
-      unlocks: "矿坑、矿石堆场、矿工。",
+      unlocks: "矿坑、矿工、矿石堆场、竖井。",
     },
     smelting: {
       name: "冶炼", era: "工业", order: 7,
       desc: "矿石承认自己内部藏着另一种形状。",
       cost: { knowledge: 180, ore: 25, stone: 50, wood: 30 },
       require: { tech: "mining" },
-      unlocks: "冶炼炉、锭料棚、砖垛场、司炉、金属。",
+      unlocks: "冶炼炉、司炉、金属、砖窑、锻炉、锭料棚。",
     },
     writing: {
       name: "残档编目", era: "智库", order: 8,
       desc: "知识若不被编目，就只是胸腔里的噪音。",
       cost: { knowledge: 160, wood: 40, fiber: 30 },
       require: { tech: "survival" },
-      unlocks: "学堂、残卷架、长屋、解码者、工坊残卷、专属客馆。",
+      unlocks: "学堂、长屋、解码者、工坊残卷、专属客馆、残卷架。",
     },
     mathematics: {
       name: "数学", era: "智库", order: 9,
@@ -482,14 +670,14 @@ TA.DATA = {
       desc: "齿轮比肌肉诚实。",
       cost: { knowledge: 320, metal: 15, plank: 20, wood: 50 },
       require: { tech: "smelting" },
-      unlocks: "水车、河舟。",
+      unlocks: "水车、河舟、水泵。",
     },
     irrigation: {
       name: "水利", era: "聚落", order: 11,
       desc: "你开始管理一条河流，而不仅仅是向它乞讨清水。",
       cost: { knowledge: 240, water: 80, stone: 60 },
       require: { tech: "agriculture" },
-      unlocks: "蓄水池、清水产出提升。",
+      unlocks: "清水产出提升、水井、蓄水池。",
       flags: { waterProd: 0.2 },
     },
     electricity: {
@@ -497,7 +685,7 @@ TA.DATA = {
       desc: "黑暗被重新定义。义体第一次感到「故乡的电流」。",
       cost: { knowledge: 520, metal: 30, energy: 40 },
       require: { tech: "mechanics" },
-      unlocks: "河坝电站、蓄电池组、实验室、专属院落、蒸汽车。",
+      unlocks: "河坝电站、实验室、专属院落、蒸汽车、蓄电池组。",
     },
     chemistry: {
       name: "化学", era: "工业", order: 13,
@@ -518,7 +706,7 @@ TA.DATA = {
       desc: "芯片终于遇见了它在这颗星球上的亲戚。",
       cost: { knowledge: 1400, metal: 40, remnant: 4, energy: 80 },
       require: { tech: "electricity" },
-      unlocks: "光伏、装配厂、元件柜、技术员、电路、浮橇。",
+      unlocks: "光伏、装配厂、技术员、电路、浮橇、元件柜。",
     },
     computing: {
       name: "计算重构", era: "先进", order: 16,
@@ -546,7 +734,7 @@ TA.DATA = {
       desc: "面壁者曾用过更疯狂的手段。你只要一座安分的反应堆。",
       cost: { knowledge: 6000, alloy: 30, remnant: 10, energy: 200 },
       require: { tech: "computing" },
-      unlocks: "裂变堆、约束窖、微量反物质。",
+      unlocks: "裂变堆、微量反物质、约束窖。",
     },
     sophon: {
       name: "智子理论", era: "星空", order: 20,
@@ -624,6 +812,20 @@ TA.DATA = {
       cost: { stone: 3, water: 1, wood: 1 },
       gain: { brick: 1 },
     },
+    mealCraft: {
+      name: "烹制熟食",
+      desc: "把块茎与兽肉交给火焰。熟食比生食更能留住人。",
+      require: { tech: "cookery" },
+      cost: { food: 2, meat: 1, water: 1 },
+      gain: { meal: 2 },
+    },
+    clothCraft: {
+      name: "织布",
+      desc: "纤维与皮革交叉成匹。",
+      require: { tech: "weaving" },
+      cost: { fiber: 6, hide: 1 },
+      gain: { cloth: 1 },
+    },
     metalCraft: {
       name: "手工炼金",
       desc: "炉火不足时，改用更原始的方法。",
@@ -697,6 +899,20 @@ TA.DATA = {
       cost: { food: 80, knowledge: 100, water: 50 },
       flags: { foodProd: 0.2 },
     },
+    smokeCure: {
+      name: "熏制",
+      desc: "熟食产出 +20%。",
+      require: { tech: "cookery" },
+      cost: { food: 40, meat: 8, knowledge: 60, wood: 20 },
+      flags: { mealProd: 0.2 },
+    },
+    spindle: {
+      name: "纺轮",
+      desc: "布匹产出 +25%。",
+      require: { tech: "weaving" },
+      cost: { fiber: 40, wood: 20, knowledge: 80 },
+      flags: { clothProd: 0.25 },
+    },
     pulley: {
       name: "滑轮组",
       desc: "原木与石料建筑产出 +20%。",
@@ -713,10 +929,10 @@ TA.DATA = {
     },
     catalog: {
       name: "残档压缩",
-      desc: "知识产出 +25%。",
+      desc: "知识产出 +25%，知识上限 +20%。",
       require: { tech: "writing" },
       cost: { remnant: 3, knowledge: 300, plank: 15 },
-      flags: { knowledgeProd: 0.25 },
+      flags: { knowledgeProd: 0.25, knowledgeCap: 0.2 },
     },
     silentBus: {
       name: "静默总线",
@@ -875,7 +1091,9 @@ TA.DATA = {
   stories: [
     { id: "wake", trigger: {}, text: "你还记得自己的名字。义体的序列号在视野角落闪烁。河水的味道像含铁的雨水。" },
     { id: "firstFire", trigger: { tech: "fire" }, text: "火焰升起来的时候，对岸有什么生物发出一声短促的鸣叫，随后退进树影。导师没在录音里提过它们。" },
+    { id: "firstKitchen", trigger: { building: "kitchen", count: 1 }, text: "第一锅熟食端出来时，居民围过来。他们不再只把食物放在门口，开始在火塘边坐下等待。" },
     { id: "firstHut", trigger: { building: "hut", count: 1 }, text: "棚屋立住的第一个夜晚，三名居民走来。他们把食物放在门口，又把一块打磨过的石头放在你掌心。这是一份租约。" },
+    { id: "firstPen", trigger: { building: "pen", count: 1 }, text: "畜栏合拢的时候，对岸的鸣叫停了一夜。栅栏里的生物低头吃草，像是早就在等这道围栏。" },
     { id: "archive", trigger: { building: "archive", count: 1 }, text: "残档接口接通的瞬间，两千年的农书、几何与一首没唱完的歌曲同时涌进来。你呕吐了。然后开始分类。" },
     { id: "folk", trigger: { pop: 5 }, text: "居民开始模仿你的作息。他们仍不会制造轮子，但已经会把工具放回原处。" },
     { id: "metal", trigger: { tech: "smelting" }, text: "第一块金属凝固时，你看见了自己的面孔。义体的外壳在这颗星球上第一次有了镜子。" },
@@ -890,6 +1108,7 @@ TA.DATA = {
   events: [
     { id: "flood", minDay: 8, weight: 3, text: "夜洪把上游的浮木与湿润的块茎冲到营地。", gain: { wood: 18, food: 12, water: 25 } },
     { id: "gift", minDay: 15, weight: 2, text: "居民留下一堆纤维和打磨石。他们仍不进屋，只在火光外蹲着看。", gain: { fiber: 16, stone: 10 }, requirePop: 1 },
+    { id: "strayHerd", minDay: 28, weight: 2, text: "一群走失的牲畜停在畜栏外。它们把兽肉与皮革的节奏提前送到营地。", gain: { meat: 10, hide: 6, food: 8 }, require: { tech: "husbandry" } },
     { id: "chip", minDay: 20, weight: 2, text: "芯片自行解压出一页被损坏的笔记：导师的字迹，写着「先活下来」。", gain: { knowledge: 25 } },
     { id: "oreVein", minDay: 40, weight: 2, text: "霜降后山体裂开一条缝隙。矿脉像伤口一样发亮。", gain: { ore: 14, stone: 12 }, require: { tech: "mining" } },
     { id: "drought", minDay: 30, weight: 2, text: "连续无雨。蓄水坑的水位露出泥线。", lose: { water: 20 }, warn: true },
@@ -912,6 +1131,26 @@ TA.DATA.crafts.rope = {
   flags: { ropeCap: 0.01 },
 };
 TA.DATA.buildings.drive.cost = { alloy: 80, circuit: 40, antimatter: 4, crystal: 3 };
+
+(function assignCamp() {
+  const camp = {
+    lumber: "forest", lumberShed: "forest", sawmill: "forest", charcoalPit: "forest", nursery: "forest",
+    quarry: "mine", mine: "mine", oreBin: "mine", deepShaft: "mine",
+    furnace: "smelt", brickYard: "smelt", kiln: "smelt", bloomery: "smelt", foundry: "smelt", ingotShed: "smelt",
+    grove: "farm", paddy: "farm", cistern: "farm", orchard: "farm", well: "farm",
+    pen: "stock", pasture: "stock", tannery: "stock",
+    campfire: "cook", kitchen: "cook", smokehouse: "cook",
+    fiberShed: "weave", loom: "weave", clothShed: "weave", tailor: "weave",
+    warehouse: "store", silo: "store", waterTank: "store", cellar: "store", stockyard: "store",
+    remnantShelf: "store", chartCase: "store", batteryBank: "store", alloyRack: "store",
+    fuelTank: "store", circuitCase: "store", hazardVault: "store",
+    mill: "industry", dam: "industry", solar: "industry", factory: "industry", reactor: "industry",
+    archive: "industry", academy: "industry", lab: "industry", observatory: "industry", pump: "industry",
+  };
+  for (const [id, c] of Object.entries(camp)) {
+    if (TA.DATA.buildings[id]) TA.DATA.buildings[id].camp = c;
+  }
+})();
 
 TA.DATA.zones = (function makeZones() {
   const rings = ["河缘", "苔坡", "雾林", "页岩", "霜原", "铜谷", "夜泽", "崖径", "盲湾", "余烬"];
@@ -940,7 +1179,7 @@ TA.DATA.zones = (function makeZones() {
       if (dist >= 8) loot.crystal = 1;
       if (dist >= 9) loot.antimatter = 1;
     } else {
-      loot.food = 1; loot.stone = 2; loot.ore = 2; loot.remnant = 1;
+      loot.food = 1; loot.stone = 2; loot.ore = 2; loot.remnant = 1; loot.meat = 2; loot.hide = 1;
       if (dist >= 6) loot.alloy = 1;
       if (kind === "boss") {
         loot.knowledge = 3;
